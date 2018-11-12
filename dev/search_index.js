@@ -29,7 +29,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Installation",
     "category": "section",
-    "text": "In Julia v1.0 (and v0.7) you can install JuAFEM from the Pkg REPL (press ] in the Julia REPL to enter pkg> mode):pkg> add https://github.com/KristofferC/JuAFEM.jl.gitnote: Note\nAlternative installation method:julia> import Pkg; Pkg.add(PackageSpec(url = \"https://github.com/KristofferC/JuAFEM.jl.git\"))To load the package, useusing JuAFEMto load the package.note: Note\nIn Julia v0.6 you need to checkout the release-0.3 branch when installing:Pkg.clone(\"https://github.com/KristofferC/JuAFEM.jl.git\")\nPkg.checkout(\"JuAFEM\", \"release-0.3\")"
+    "text": "In Julia v1.0 (and v0.7) you can install JuAFEM from the Pkg REPL (press ] in the Julia REPL to enter pkg> mode):pkg> add https://github.com/KristofferC/JuAFEM.jl.gitnote: Note\nAlternative installation method:julia> import Pkg; Pkg.add(PackageSpec(url = \"https://github.com/KristofferC/JuAFEM.jl.git\"))To load the package, useusing JuAFEMnote: Note\nIn Julia v0.6 you need to checkout the release-0.3 branch when installing:Pkg.clone(\"https://github.com/KristofferC/JuAFEM.jl.git\")\nPkg.checkout(\"JuAFEM\", \"release-0.3\")"
 },
 
 {
