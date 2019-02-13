@@ -14,11 +14,11 @@ create_example_2d_grid()</code></pre><pre><code class="language-none">1-element 
     grid = generate_grid(celltype, (10*n, n, n), Vec{3}((0.0, 0.0, 0.0)), Vec{3}((10.0, 1.0, 1.0)))
     cell_colors, final_colors = JuAFEM.create_coloring(grid)
     return grid, final_colors
-end;</code></pre><pre><code class="language-none">nothing</code></pre><h4><a class="nav-anchor" id="DofHandler-1" href="#DofHandler-1">DofHandler</a></h4><pre><code class="language-julia">function create_dofhandler(grid::Grid{dim}) where {dim}
+end;</code></pre><h4><a class="nav-anchor" id="DofHandler-1" href="#DofHandler-1">DofHandler</a></h4><pre><code class="language-julia">function create_dofhandler(grid::Grid{dim}) where {dim}
     dh = DofHandler(grid)
     push!(dh, :u, dim) # Add a displacement field
     close!(dh)
-end;</code></pre><pre><code class="language-none">nothing</code></pre><h3><a class="nav-anchor" id="Stiffness-tensor-for-linear-elasticity-1" href="#Stiffness-tensor-for-linear-elasticity-1">Stiffness tensor for linear elasticity</a></h3><pre><code class="language-julia">function create_stiffness(::Val{dim}) where {dim}
+end;</code></pre><h3><a class="nav-anchor" id="Stiffness-tensor-for-linear-elasticity-1" href="#Stiffness-tensor-for-linear-elasticity-1">Stiffness tensor for linear elasticity</a></h3><pre><code class="language-julia">function create_stiffness(::Val{dim}) where {dim}
     E = 200e9
     ν = 0.3
     λ = E*ν / ((1+ν) * (1 - 2ν))
@@ -27,7 +27,7 @@ end;</code></pre><pre><code class="language-none">nothing</code></pre><h3><a cla
     g(i,j,k,l) = λ*δ(i,j)*δ(k,l) + μ*(δ(i,k)*δ(j,l) + δ(i,l)*δ(j,k))
     C = SymmetricTensor{4, dim}(g);
     return C
-end;</code></pre><pre><code class="language-none">nothing</code></pre><h2><a class="nav-anchor" id="Threaded-data-structures-1" href="#Threaded-data-structures-1">Threaded data structures</a></h2><p>ScratchValues is a thread-local collection of data that each thread needs to own, since we need to be able to mutate the data in the threads independently</p><pre><code class="language-julia">struct ScratchValues{T, CV &lt;: CellValues, FV &lt;: FaceValues, TT &lt;: AbstractTensor, dim, Ti}
+end;</code></pre><h2><a class="nav-anchor" id="Threaded-data-structures-1" href="#Threaded-data-structures-1">Threaded data structures</a></h2><p>ScratchValues is a thread-local collection of data that each thread needs to own, since we need to be able to mutate the data in the threads independently</p><pre><code class="language-julia">struct ScratchValues{T, CV &lt;: CellValues, FV &lt;: FaceValues, TT &lt;: AbstractTensor, dim, Ti}
     Ke::Matrix{T}
     fe::Vector{T}
     cellvalues::CV
@@ -36,7 +36,7 @@ end;</code></pre><pre><code class="language-none">nothing</code></pre><h2><a cla
     ɛ::Vector{TT}
     coordinates::Vector{Vec{dim, T}}
     assembler::JuAFEM.AssemblerSparsityPattern{T, Ti}
-end;</code></pre><pre><code class="language-none">nothing</code></pre><p>Each thread need its own CellValues and FaceValues (although, for this example we don&#39;t use the FaceValues)</p><pre><code class="language-julia">function create_values(refshape, dim, order::Int)
+end;</code></pre><p>Each thread need its own CellValues and FaceValues (although, for this example we don&#39;t use the FaceValues)</p><pre><code class="language-julia">function create_values(refshape, dim, order::Int)
     # Interpolations and values
     interpolation_space = Lagrange{dim, refshape, 1}()
     quadrature_rule = QuadratureRule{dim, refshape}(order)
@@ -44,7 +44,7 @@ end;</code></pre><pre><code class="language-none">nothing</code></pre><p>Each th
     cellvalues = [CellVectorValues(quadrature_rule, interpolation_space) for i in 1:Threads.nthreads()];
     facevalues = [FaceVectorValues(face_quadrature_rule, interpolation_space) for i in 1:Threads.nthreads()];
     return cellvalues, facevalues
-end;</code></pre><pre><code class="language-none">nothing</code></pre><p>Create a <code>ScratchValues</code> for each thread with the thread local data</p><pre><code class="language-julia">function create_scratchvalues(K, f, dh::DofHandler{dim}) where {dim}
+end;</code></pre><p>Create a <code>ScratchValues</code> for each thread with the thread local data</p><pre><code class="language-julia">function create_scratchvalues(K, f, dh::DofHandler{dim}) where {dim}
     nthreads = Threads.nthreads()
     assemblers = [start_assemble(K, f) for i in 1:nthreads]
     cellvalues, facevalues = create_values(RefCube, dim, 2)
@@ -61,7 +61,7 @@ end;</code></pre><pre><code class="language-none">nothing</code></pre><p>Create 
 
     return [ScratchValues(Kes[i], fes[i], cellvalues[i], facevalues[i], global_dofs[i],
                          ɛs[i], coordinates[i], assemblers[i]) for i in 1:nthreads]
-end;</code></pre><pre><code class="language-none">nothing</code></pre><h2><a class="nav-anchor" id="Threaded-assemble-1" href="#Threaded-assemble-1">Threaded assemble</a></h2><p>The assembly function loops over each color and does a threaded assembly for that color</p><pre><code class="language-julia">function doassemble(K::SparseMatrixCSC, colors, grid::Grid, dh::DofHandler, C::SymmetricTensor{4, dim}) where {dim}
+end;</code></pre><h2><a class="nav-anchor" id="Threaded-assemble-1" href="#Threaded-assemble-1">Threaded assemble</a></h2><p>The assembly function loops over each color and does a threaded assembly for that color</p><pre><code class="language-julia">function doassemble(K::SparseMatrixCSC, colors, grid::Grid, dh::DofHandler, C::SymmetricTensor{4, dim}) where {dim}
 
     f = zeros(ndofs(dh))
     scratches = create_scratchvalues(K, f, dh)
@@ -131,7 +131,7 @@ function run_assemble()
     return b
 end
 
-run_assemble()</code></pre><pre><code class="language-none">2.235505485</code></pre><p>Running the code with different number of threads give the following runtimes:</p><ul><li>1 thread  2.46 seconds</li><li>2 threads 1.19 seconds</li><li>3 threads 0.83 seconds</li><li>4 threads 0.75 seconds</li></ul><h2><a class="nav-anchor" id="threaded_assembly-plain-program-1" href="#threaded_assembly-plain-program-1">Plain Program</a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../threaded_assembly.jl">threaded_assembly.jl</a></p><pre><code class="language-julia">using JuAFEM, SparseArrays
+run_assemble()</code></pre><pre><code class="language-none">2.514313898</code></pre><p>Running the code with different number of threads give the following runtimes:</p><ul><li>1 thread  2.46 seconds</li><li>2 threads 1.19 seconds</li><li>3 threads 0.83 seconds</li><li>4 threads 0.75 seconds</li></ul><h2><a class="nav-anchor" id="threaded_assembly-plain-program-1" href="#threaded_assembly-plain-program-1">Plain Program</a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../threaded_assembly.jl">threaded_assembly.jl</a></p><pre><code class="language-julia">using JuAFEM, SparseArrays
 
 function create_example_2d_grid()
     grid = generate_grid(Quadrilateral, (10, 10), Vec{2}((0.0, 0.0)), Vec{2}((10.0, 10.0)))
