@@ -5,6 +5,7 @@ using Reexport
 
 using LinearAlgebra
 using SparseArrays
+import Metis
 
 using Base: @propagate_inbounds
 

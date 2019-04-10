@@ -326,16 +326,16 @@ end
 
 # dof renumbering
 """
-    renumber!(dh::DofHandler, perm)
+    renumber!(dh::DofHandler, perm=Metis.permutation(dh))
 
 Renumber the degrees of freedom in the DofHandler according to the
-permuation `perm`.
+permutation `perm`.
 
 !!! warning
     Remember to do renumbering *before* adding boundary conditions,
     otherwise the mapping for the dofs will be wrong.
 """
-function renumber!(dh::DofHandler, perm::AbstractVector{<:Integer})
+function renumber!(dh::DofHandler, perm::AbstractVector{<:Integer} = Metis.permutation(dh)[2])
     @assert isperm(perm) && length(perm) == ndofs(dh)
     cell_dofs = dh.cell_dofs
     for i in eachindex(cell_dofs)
@@ -343,6 +343,8 @@ function renumber!(dh::DofHandler, perm::AbstractVector{<:Integer})
     end
     return dh
 end
+# TODO: This can be made much more efficient
+Metis.graph(dh::DofHandler) = Metis.graph(create_sparsity_pattern(dh))
 
 WriteVTK.vtk_grid(filename::AbstractString, dh::DofHandler) = vtk_grid(filename, dh.grid)
 
