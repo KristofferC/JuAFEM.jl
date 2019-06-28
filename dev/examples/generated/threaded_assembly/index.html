@@ -131,7 +131,7 @@ function run_assemble()
     return b
 end
 
-run_assemble()</code></pre><pre><code class="language-none">2.243787491</code></pre><p>Running the code with different number of threads give the following runtimes:</p><ul><li>1 thread  2.46 seconds</li><li>2 threads 1.19 seconds</li><li>3 threads 0.83 seconds</li><li>4 threads 0.75 seconds</li></ul><h2><a class="nav-anchor" id="threaded_assembly-plain-program-1" href="#threaded_assembly-plain-program-1">Plain Program</a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../threaded_assembly.jl">threaded_assembly.jl</a></p><pre><code class="language-julia">using JuAFEM, SparseArrays
+run_assemble()</code></pre><pre><code class="language-none">2.267477253</code></pre><p>Running the code with different number of threads give the following runtimes:</p><ul><li>1 thread  2.46 seconds</li><li>2 threads 1.19 seconds</li><li>3 threads 0.83 seconds</li><li>4 threads 0.75 seconds</li></ul><h2><a class="nav-anchor" id="threaded_assembly-plain-program-1" href="#threaded_assembly-plain-program-1">Plain Program</a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../threaded_assembly.jl">threaded_assembly.jl</a></p><pre><code class="language-julia">using JuAFEM, SparseArrays
 
 function create_example_2d_grid()
     grid = generate_grid(Quadrilateral, (10, 10), Vec{2}((0.0, 0.0)), Vec{2}((10.0, 10.0)))
