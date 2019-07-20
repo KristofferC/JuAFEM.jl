@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>von Mises plasticity · JuAFEM.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link href="../../../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>JuAFEM.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../../../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../../../">Home</a></li><li><a class="toctext" href="../../../manual/fe_intro/">Introduction to FEM</a></li><li><span class="toctext">Manual</span><ul><li><a class="toctext" href="../../../manual/cell_integration/">Cell Integration</a></li><li><a class="toctext" href="../../../manual/degrees_of_freedom/">Degrees of Freedom</a></li><li><a class="toctext" href="../../../manual/assembly/">Assembly</a></li><li><a class="toctext" href="../../../manual/boundary_conditions/">Boundary Conditions</a></li><li><a class="toctext" href="../../../manual/grid/">Grid</a></li><li><a class="toctext" href="../../../manual/export/">Export</a></li></ul></li><li><span class="toctext">Examples</span><ul><li><a class="toctext" href="../heat_equation/">Heat Equation</a></li><li><a class="toctext" href="../incompressible_elasticity/">Incompressible Elasticity</a></li><li><a class="toctext" href="../threaded_assembly/">Threaded Assembly</a></li><li class="current"><a class="toctext" href>von Mises plasticity</a><ul class="internal"><li><a class="toctext" href="#Introduction-1">Introduction</a></li><li><a class="toctext" href="#Material-modeling-1">Material modeling</a></li><li><a class="toctext" href="#Constitutive-driver-1">Constitutive driver</a></li><li><a class="toctext" href="#FE-problem-1">FE-problem</a></li><li><a class="toctext" href="#Add-degrees-of-freedom-1">Add degrees of freedom</a></li><li><a class="toctext" href="#Postprocessing-1">Postprocessing</a></li><li><a class="toctext" href="#plasticity-raw-code-1">Raw source</a></li></ul></li></ul></li><li><span class="toctext">API Reference</span><ul><li><a class="toctext" href="../../../reference/quadrature/">Quadrature</a></li><li><a class="toctext" href="../../../reference/interpolations/">Interpolation</a></li><li><a class="toctext" href="../../../reference/fevalues/">FEValues</a></li><li><a class="toctext" href="../../../reference/dofhandler/">DofHandler</a></li><li><a class="toctext" href="../../../reference/assembly/">Assembly</a></li><li><a class="toctext" href="../../../reference/boundary_conditions/">Boundary Conditions</a></li><li><a class="toctext" href="../../../reference/grid/">Grid</a></li><li><a class="toctext" href="../../../reference/export/">Export</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Examples</li><li><a href>von Mises plasticity</a></li></ul><a class="edit-page" href="https://github.com/KristofferC/JuAFEM.jl/blob/master/docs/src/examples/plasticity.jl"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>von Mises plasticity</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="von-Mises-plasticity-1" href="#von-Mises-plasticity-1">von Mises plasticity</a></h1><p><img src="../plasticity.png" alt="Shows the von Mises stress distribution in a cantilever beam."/> <em>Figure 1.</em> A coarse mesh solution of a cantilever beam subjected to a load causing plastic deformations. The initial yield limit is 200 MPa but due to hardening it increases up to approximately 240 MPa.</p><h2><a class="nav-anchor" id="Introduction-1" href="#Introduction-1">Introduction</a></h2><p>This example illustrates the use of a nonlinear material model in JuAFEM. The particular model is von Mises plasticity (also know as J₂-plasticity) with isotropic hardening. The model is fully 3D, meaning that no assumptions like <em>plane stress</em> or <em>plane strain</em> are introduced.</p><p>Also note that the theory of the model is not described here, instead one is referred to standard textbooks on material modeling.</p><p>To illustrate the use of the plasticity model, we setup and solve a FE-problem consisting of a cantilever beam loaded at its free end. But first, we shortly describe the parts of the implementation deadling with the material modeling.</p><div class="admonition tip"><div class="admonition-title">Tip</div><div class="admonition-text"><p>This example is also available as a Jupyter notebook: <a href="https://nbviewer.jupyter.org/github/KristofferC/JuAFEM.jl/blob/gh-pages/dev/examples/generated/plasticity.ipynb"><code>plasticity.ipynb</code></a></p></div></div><h2><a class="nav-anchor" id="Material-modeling-1" href="#Material-modeling-1">Material modeling</a></h2><p>This section describes the <code>struct</code>s and methods used to implement the material model</p><h3><a class="nav-anchor" id="Material-parameters-and-state-variables-1" href="#Material-parameters-and-state-variables-1">Material parameters and state variables</a></h3><p>Start by loading some necessary packages</p><pre><code class="language-julia">using JuAFEM, SparseArrays, LinearAlgebra, Printf</code></pre><p>We define a J₂-plasticity-material, containing material parameters and the elastic stiffness Dᵉ (since it is constant)</p><pre><code class="language-julia">struct J2Plasticity{T, S &lt;: SymmetricTensor{4, 3, T}}
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>von Mises plasticity · JuAFEM.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link href="../../../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>JuAFEM.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../../../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../../../">Home</a></li><li><a class="toctext" href="../../../manual/fe_intro/">Introduction to FEM</a></li><li><span class="toctext">Manual</span><ul><li><a class="toctext" href="../../../manual/cell_integration/">Cell Integration</a></li><li><a class="toctext" href="../../../manual/degrees_of_freedom/">Degrees of Freedom</a></li><li><a class="toctext" href="../../../manual/assembly/">Assembly</a></li><li><a class="toctext" href="../../../manual/boundary_conditions/">Boundary Conditions</a></li><li><a class="toctext" href="../../../manual/grid/">Grid</a></li><li><a class="toctext" href="../../../manual/export/">Export</a></li></ul></li><li><span class="toctext">Examples</span><ul><li><a class="toctext" href="../heat_equation/">Heat Equation</a></li><li><a class="toctext" href="../incompressible_elasticity/">Incompressible Elasticity</a></li><li><a class="toctext" href="../threaded_assembly/">Threaded Assembly</a></li><li class="current"><a class="toctext" href>von Mises plasticity</a><ul class="internal"><li><a class="toctext" href="#Introduction-1">Introduction</a></li><li><a class="toctext" href="#Material-modeling-1">Material modeling</a></li><li><a class="toctext" href="#Constitutive-driver-1">Constitutive driver</a></li><li><a class="toctext" href="#FE-problem-1">FE-problem</a></li><li><a class="toctext" href="#Add-degrees-of-freedom-1">Add degrees of freedom</a></li><li><a class="toctext" href="#Postprocessing-1">Postprocessing</a></li><li><a class="toctext" href="#plasticity-raw-code-1">Raw source</a></li></ul></li></ul></li><li><span class="toctext">API Reference</span><ul><li><a class="toctext" href="../../../reference/quadrature/">Quadrature</a></li><li><a class="toctext" href="../../../reference/interpolations/">Interpolation</a></li><li><a class="toctext" href="../../../reference/fevalues/">FEValues</a></li><li><a class="toctext" href="../../../reference/dofhandler/">DofHandler</a></li><li><a class="toctext" href="../../../reference/assembly/">Assembly</a></li><li><a class="toctext" href="../../../reference/boundary_conditions/">Boundary Conditions</a></li><li><a class="toctext" href="../../../reference/grid/">Grid</a></li><li><a class="toctext" href="../../../reference/export/">Export</a></li></ul></li></ul></nav><article id="docs"><header><nav><ul><li>Examples</li><li><a href>von Mises plasticity</a></li></ul><a class="edit-page" href="https://github.com/KristofferC/JuAFEM.jl/blob/master/docs/src/examples/plasticity.jl"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>von Mises plasticity</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="von-Mises-plasticity-1" href="#von-Mises-plasticity-1">von Mises plasticity</a></h1><p><img src="../../plasticity.png" alt="Shows the von Mises stress distribution in a cantilever beam."/> <em>Figure 1.</em> A coarse mesh solution of a cantilever beam subjected to a load causing plastic deformations. The initial yield limit is 200 MPa but due to hardening it increases up to approximately 240 MPa.</p><h2><a class="nav-anchor" id="Introduction-1" href="#Introduction-1">Introduction</a></h2><p>This example illustrates the use of a nonlinear material model in JuAFEM. The particular model is von Mises plasticity (also know as J₂-plasticity) with isotropic hardening. The model is fully 3D, meaning that no assumptions like <em>plane stress</em> or <em>plane strain</em> are introduced.</p><p>Also note that the theory of the model is not described here, instead one is referred to standard textbooks on material modeling.</p><p>To illustrate the use of the plasticity model, we setup and solve a FE-problem consisting of a cantilever beam loaded at its free end. But first, we shortly describe the parts of the implementation deadling with the material modeling.</p><div class="admonition tip"><div class="admonition-title">Tip</div><div class="admonition-text"><p>This example is also available as a Jupyter notebook: <a href="https://nbviewer.jupyter.org/github/KristofferC/JuAFEM.jl/blob/gh-pages/dev/examples/generated/plasticity.ipynb"><code>plasticity.ipynb</code></a></p></div></div><h2><a class="nav-anchor" id="Material-modeling-1" href="#Material-modeling-1">Material modeling</a></h2><p>This section describes the <code>struct</code>s and methods used to implement the material model</p><h3><a class="nav-anchor" id="Material-parameters-and-state-variables-1" href="#Material-parameters-and-state-variables-1">Material parameters and state variables</a></h3><p>Start by loading some necessary packages</p><pre><code class="language-julia">using JuAFEM, SparseArrays, LinearAlgebra, Printf</code></pre><p>We define a J₂-plasticity-material, containing material parameters and the elastic stiffness Dᵉ (since it is constant)</p><pre><code class="language-julia">struct J2Plasticity{T, S &lt;: SymmetricTensor{4, 3, T}}
     G::T  # Shear modulus
     K::T  # Bulk modulus
     σ₀::T # Initial yield limit
@@ -233,178 +233,178 @@ ylabel!(&quot;Traction [Pa]&quot;)
 xlabel!(&quot;Maximum deflection [m]&quot;)</code></pre><?xml version="1.0" encoding="utf-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="600" height="400" viewBox="0 0 2400 1600">
 <defs>
-  <clipPath id="clip1000">
+  <clipPath id="clip7500">
     <rect x="0" y="0" width="2400" height="1600"/>
   </clipPath>
 </defs>
-<polygon clip-path="url(#clip1000)" points="
+<polygon clip-path="url(#clip7500)" points="
 0,1600 2400,1600 2400,0 0,0 
   " fill="#ffffff" fill-rule="evenodd" fill-opacity="1"/>
 <defs>
-  <clipPath id="clip1001">
+  <clipPath id="clip7501">
     <rect x="480" y="0" width="1681" height="1600"/>
   </clipPath>
 </defs>
-<polygon clip-path="url(#clip1000)" points="
+<polygon clip-path="url(#clip7500)" points="
 102.74,1505.26 2352.76,1505.26 2352.76,62.9921 102.74,62.9921 
   " fill="#ffffff" fill-rule="evenodd" fill-opacity="1"/>
 <defs>
-  <clipPath id="clip1002">
+  <clipPath id="clip7502">
     <rect x="102" y="62" width="2251" height="1443"/>
   </clipPath>
 </defs>
-<polyline clip-path="url(#clip1002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+<polyline clip-path="url(#clip7502)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
   166.42,1505.26 166.42,62.9921 
   "/>
-<polyline clip-path="url(#clip1002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+<polyline clip-path="url(#clip7502)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
   583.522,1505.26 583.522,62.9921 
   "/>
-<polyline clip-path="url(#clip1002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+<polyline clip-path="url(#clip7502)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
   1000.62,1505.26 1000.62,62.9921 
   "/>
-<polyline clip-path="url(#clip1002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+<polyline clip-path="url(#clip7502)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
   1417.73,1505.26 1417.73,62.9921 
   "/>
-<polyline clip-path="url(#clip1002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+<polyline clip-path="url(#clip7502)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
   1834.83,1505.26 1834.83,62.9921 
   "/>
-<polyline clip-path="url(#clip1002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+<polyline clip-path="url(#clip7502)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
   2251.93,1505.26 2251.93,62.9921 
   "/>
-<polyline clip-path="url(#clip1002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+<polyline clip-path="url(#clip7502)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
   102.74,1464.44 2352.76,1464.44 
   "/>
-<polyline clip-path="url(#clip1002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+<polyline clip-path="url(#clip7502)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
   102.74,1124.28 2352.76,1124.28 
   "/>
-<polyline clip-path="url(#clip1002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+<polyline clip-path="url(#clip7502)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
   102.74,784.126 2352.76,784.126 
   "/>
-<polyline clip-path="url(#clip1002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+<polyline clip-path="url(#clip7502)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
   102.74,443.969 2352.76,443.969 
   "/>
-<polyline clip-path="url(#clip1002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+<polyline clip-path="url(#clip7502)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
   102.74,103.811 2352.76,103.811 
   "/>
-<polyline clip-path="url(#clip1000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+<polyline clip-path="url(#clip7500)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
   102.74,1505.26 2352.76,1505.26 
   "/>
-<polyline clip-path="url(#clip1000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+<polyline clip-path="url(#clip7500)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
   102.74,1505.26 102.74,62.9921 
   "/>
-<polyline clip-path="url(#clip1000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+<polyline clip-path="url(#clip7500)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
   166.42,1505.26 166.42,1483.63 
   "/>
-<polyline clip-path="url(#clip1000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+<polyline clip-path="url(#clip7500)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
   583.522,1505.26 583.522,1483.63 
   "/>
-<polyline clip-path="url(#clip1000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+<polyline clip-path="url(#clip7500)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
   1000.62,1505.26 1000.62,1483.63 
   "/>
-<polyline clip-path="url(#clip1000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+<polyline clip-path="url(#clip7500)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
   1417.73,1505.26 1417.73,1483.63 
   "/>
-<polyline clip-path="url(#clip1000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+<polyline clip-path="url(#clip7500)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
   1834.83,1505.26 1834.83,1483.63 
   "/>
-<polyline clip-path="url(#clip1000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+<polyline clip-path="url(#clip7500)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
   2251.93,1505.26 2251.93,1483.63 
   "/>
-<polyline clip-path="url(#clip1000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+<polyline clip-path="url(#clip7500)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
   102.74,1464.44 136.49,1464.44 
   "/>
-<polyline clip-path="url(#clip1000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+<polyline clip-path="url(#clip7500)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
   102.74,1124.28 136.49,1124.28 
   "/>
-<polyline clip-path="url(#clip1000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+<polyline clip-path="url(#clip7500)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
   102.74,784.126 136.49,784.126 
   "/>
-<polyline clip-path="url(#clip1000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+<polyline clip-path="url(#clip7500)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
   102.74,443.969 136.49,443.969 
   "/>
-<polyline clip-path="url(#clip1000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+<polyline clip-path="url(#clip7500)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
   102.74,103.811 136.49,103.811 
   "/>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 166.42, 1559.26)" x="166.42" y="1559.26">0.00</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 583.522, 1559.26)" x="583.522" y="1559.26">0.05</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 1000.62, 1559.26)" x="1000.62" y="1559.26">0.10</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 1417.73, 1559.26)" x="1417.73" y="1559.26">0.15</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 1834.83, 1559.26)" x="1834.83" y="1559.26">0.20</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 2251.93, 1559.26)" x="2251.93" y="1559.26">0.25</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:end;" transform="rotate(0, 78.7402, 1481.94)" x="78.7402" y="1481.94">0</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:start;" transform="rotate(0, -91.5449, 1148.01)" x="-91.5449" y="1148.01">2.5×10</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:38px; text-anchor:start;" transform="rotate(0, 56.9958, 1120.6)" x="56.9958" y="1120.6">6</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:start;" transform="rotate(0, -91.5449, 807.854)" x="-91.5449" y="807.854">5.0×10</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:38px; text-anchor:start;" transform="rotate(0, 56.9958, 780.443)" x="56.9958" y="780.443">6</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:start;" transform="rotate(0, -91.5449, 467.696)" x="-91.5449" y="467.696">7.5×10</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:38px; text-anchor:start;" transform="rotate(0, 56.9958, 440.286)" x="56.9958" y="440.286">6</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:start;" transform="rotate(0, -91.5449, 127.539)" x="-91.5449" y="127.539">1.0×10</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:38px; text-anchor:start;" transform="rotate(0, 56.9958, 100.128)" x="56.9958" y="100.128">7</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:84px; text-anchor:middle;" transform="rotate(0, 1227.75, 73.2)" x="1227.75" y="73.2">Traction-displacement</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:66px; text-anchor:middle;" transform="rotate(0, 1227.75, 1639.12)" x="1227.75" y="1639.12">Maximum deflection [m]</text>
 </g>
-<g clip-path="url(#clip1000)">
+<g clip-path="url(#clip7500)">
 <text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:66px; text-anchor:middle;" transform="rotate(-90, -170.247, 784.126)" x="-170.247" y="784.126">Traction [Pa]</text>
 </g>
-<polyline clip-path="url(#clip1002)" style="stroke:#009af9; stroke-width:8; stroke-opacity:1; fill:none" points="
+<polyline clip-path="url(#clip7502)" style="stroke:#009af9; stroke-width:8; stroke-opacity:1; fill:none" points="
   166.42,1464.44 735.099,784.126 802.317,708.535 882.789,632.945 974.468,557.354 1082.28,481.764 1223.57,406.173 1422.9,330.583 1674.04,254.992 1964.03,179.402 
   2289.08,103.811 
   "/>
-<circle clip-path="url(#clip1002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="166.42" cy="1464.44" r="18"/>
-<circle clip-path="url(#clip1002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="166.42" cy="1464.44" r="14"/>
-<circle clip-path="url(#clip1002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="735.099" cy="784.126" r="18"/>
-<circle clip-path="url(#clip1002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="735.099" cy="784.126" r="14"/>
-<circle clip-path="url(#clip1002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="802.317" cy="708.535" r="18"/>
-<circle clip-path="url(#clip1002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="802.317" cy="708.535" r="14"/>
-<circle clip-path="url(#clip1002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="882.789" cy="632.945" r="18"/>
-<circle clip-path="url(#clip1002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="882.789" cy="632.945" r="14"/>
-<circle clip-path="url(#clip1002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="974.468" cy="557.354" r="18"/>
-<circle clip-path="url(#clip1002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="974.468" cy="557.354" r="14"/>
-<circle clip-path="url(#clip1002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1082.28" cy="481.764" r="18"/>
-<circle clip-path="url(#clip1002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1082.28" cy="481.764" r="14"/>
-<circle clip-path="url(#clip1002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1223.57" cy="406.173" r="18"/>
-<circle clip-path="url(#clip1002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1223.57" cy="406.173" r="14"/>
-<circle clip-path="url(#clip1002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1422.9" cy="330.583" r="18"/>
-<circle clip-path="url(#clip1002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1422.9" cy="330.583" r="14"/>
-<circle clip-path="url(#clip1002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1674.04" cy="254.992" r="18"/>
-<circle clip-path="url(#clip1002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1674.04" cy="254.992" r="14"/>
-<circle clip-path="url(#clip1002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1964.03" cy="179.402" r="18"/>
-<circle clip-path="url(#clip1002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1964.03" cy="179.402" r="14"/>
-<circle clip-path="url(#clip1002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="2289.08" cy="103.811" r="18"/>
-<circle clip-path="url(#clip1002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="2289.08" cy="103.811" r="14"/>
+<circle clip-path="url(#clip7502)" style="fill:#000000; stroke:none; fill-opacity:1" cx="166.42" cy="1464.44" r="18"/>
+<circle clip-path="url(#clip7502)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="166.42" cy="1464.44" r="14"/>
+<circle clip-path="url(#clip7502)" style="fill:#000000; stroke:none; fill-opacity:1" cx="735.099" cy="784.126" r="18"/>
+<circle clip-path="url(#clip7502)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="735.099" cy="784.126" r="14"/>
+<circle clip-path="url(#clip7502)" style="fill:#000000; stroke:none; fill-opacity:1" cx="802.317" cy="708.535" r="18"/>
+<circle clip-path="url(#clip7502)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="802.317" cy="708.535" r="14"/>
+<circle clip-path="url(#clip7502)" style="fill:#000000; stroke:none; fill-opacity:1" cx="882.789" cy="632.945" r="18"/>
+<circle clip-path="url(#clip7502)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="882.789" cy="632.945" r="14"/>
+<circle clip-path="url(#clip7502)" style="fill:#000000; stroke:none; fill-opacity:1" cx="974.468" cy="557.354" r="18"/>
+<circle clip-path="url(#clip7502)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="974.468" cy="557.354" r="14"/>
+<circle clip-path="url(#clip7502)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1082.28" cy="481.764" r="18"/>
+<circle clip-path="url(#clip7502)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1082.28" cy="481.764" r="14"/>
+<circle clip-path="url(#clip7502)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1223.57" cy="406.173" r="18"/>
+<circle clip-path="url(#clip7502)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1223.57" cy="406.173" r="14"/>
+<circle clip-path="url(#clip7502)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1422.9" cy="330.583" r="18"/>
+<circle clip-path="url(#clip7502)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1422.9" cy="330.583" r="14"/>
+<circle clip-path="url(#clip7502)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1674.04" cy="254.992" r="18"/>
+<circle clip-path="url(#clip7502)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1674.04" cy="254.992" r="14"/>
+<circle clip-path="url(#clip7502)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1964.03" cy="179.402" r="18"/>
+<circle clip-path="url(#clip7502)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1964.03" cy="179.402" r="14"/>
+<circle clip-path="url(#clip7502)" style="fill:#000000; stroke:none; fill-opacity:1" cx="2289.08" cy="103.811" r="18"/>
+<circle clip-path="url(#clip7502)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="2289.08" cy="103.811" r="14"/>
 </svg>
 <p><em>Figure 2.</em> Load-displacement-curve for the beam, showing a clear decrease in stiffness as more material starts to yield.</p><h2><a class="nav-anchor" id="plasticity-raw-code-1" href="#plasticity-raw-code-1">Raw source</a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../plasticity.jl">plasticity.jl</a></p><pre><code class="language-julia">using JuAFEM, SparseArrays, LinearAlgebra, Printf
 
