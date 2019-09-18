@@ -19,6 +19,7 @@ close!(dh);</code></pre><pre><code class="language-none">DofHandler
   [4  ,   2]  =  0.0
   [5  ,   2]  =  0.0
   ⋮
+  [418, 440]  =  0.0
   [419, 440]  =  0.0
   [420, 440]  =  0.0
   [439, 440]  =  0.0
@@ -80,6 +81,7 @@ end</code></pre><h3><a class="nav-anchor" id="Solution-of-the-system-1" href="#S
   [4  ,   2]  =  -0.333333
   [5  ,   2]  =  -0.166667
   ⋮
+  [418, 440]  =  -0.333333
   [419, 440]  =  -0.333333
   [420, 440]  =  -0.333333
   [439, 440]  =  -0.166667
@@ -88,7 +90,7 @@ end</code></pre><h3><a class="nav-anchor" id="Solution-of-the-system-1" href="#S
   [419, 441]  =  -0.333333
   [420, 441]  =  -0.166667
   [440, 441]  =  -0.166667
-  [441, 441]  =  0.666667, [0.0025, 0.005, 0.01, 0.005, 0.005, 0.01, 0.005, 0.01, 0.005, 0.01  …  0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.0025])</code></pre><p>To account for the boundary conditions we use the <code>apply!</code> function. This modifies elements in <code>K</code> and <code>f</code> respectively, such that we can get the correct solution vector <code>u</code> by using <code>\</code>.</p><pre><code class="language-julia">apply!(K, f, ch)
+  [441, 441]  =  0.666667, [0.002500000000000004, 0.005000000000000002, 0.009999999999999992, 0.005000000000000003, 0.005000000000000001, 0.009999999999999992, 0.005000000000000003, 0.009999999999999995, 0.005000000000000003, 0.00999999999999999  …  0.005000000000000001, 0.005000000000000001, 0.005000000000000001, 0.005000000000000002, 0.005000000000000006, 0.005000000000000003, 0.005, 0.004999999999999998, 0.005000000000000001, 0.0025000000000000035])</code></pre><p>To account for the boundary conditions we use the <code>apply!</code> function. This modifies elements in <code>K</code> and <code>f</code> respectively, such that we can get the correct solution vector <code>u</code> by using <code>\</code>.</p><pre><code class="language-julia">apply!(K, f, ch)
 u = K \ f;</code></pre><pre><code class="language-none">441-element Array{Float64,1}:
  0.0                 
  0.0                 
