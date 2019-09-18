@@ -103,7 +103,12 @@ end;</code></pre><pre><code class="language-none">doassemble (generic function w
         end
     end
 
-    symmetrize_lower!(Ke)</code></pre><p>We integrate the Neumann boundary using the facevalues. We loop over all the faces in the cell, then check if the face is in our <code>&quot;traction&quot;</code> faceset.</p><pre><code class="language-julia">    @inbounds for face in 1:nfaces(cell)
+    symmetrize_lower!(Ke)
+
+    # We integrate the Neumann boundary using the facevalues.
+    # We loop over all the faces in the cell, then check if the face
+    # is in our `&quot;traction&quot;` faceset.
+    @inbounds for face in 1:nfaces(cell)
         if onboundary(cell, face) &amp;&amp; (cellid(cell), face) ∈ getfaceset(grid, &quot;traction&quot;)
             reinit!(facevalues_u, cell, face)
             for q_point in 1:getnquadpoints(facevalues_u)
@@ -280,6 +285,9 @@ function assemble_up!(Ke, fe, cell, cellvalues_u, cellvalues_p, facevalues_u, gr
 
     symmetrize_lower!(Ke)
 
+    # We integrate the Neumann boundary using the facevalues.
+    # We loop over all the faces in the cell, then check if the face
+    # is in our `&quot;traction&quot;` faceset.
     @inbounds for face in 1:nfaces(cell)
         if onboundary(cell, face) &amp;&amp; (cellid(cell), face) ∈ getfaceset(grid, &quot;traction&quot;)
             reinit!(facevalues_u, cell, face)
