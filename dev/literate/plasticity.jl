@@ -1,5 +1,42 @@
+# # von Mises plasticity
+#
+# ![Shows the von Mises stress distribution in a cantilever beam.](../plasticity.png)
+# *Figure 1.* A coarse mesh solution of a cantilever beam subjected to a load
+# causing plastic deformations. The initial yield limit is 200 MPa but due to
+# hardening it increases up to approximately 240 MPa.
+
+#
+# ## Introduction
+#
+# This example illustrates the use of a nonlinear material model in JuAFEM.
+# The particular model is von Mises plasticity (also know as J₂-plasticity) with
+# isotropic hardening. The model is fully 3D, meaning that no assumptions like *plane stress*
+# or *plane strain* are introduced.
+#
+# Also note that the theory of the model is not described here, instead one is
+# referred to standard textbooks on material modeling.
+#
+# To illustrate the use of the plasticity model, we setup and solve a FE-problem
+# consisting of a cantilever beam loaded at its free end. But first, we shortly
+# describe the parts of the implementation deadling with the material modeling.
+
+#-
+#md # !!! tip
+#md #     This example is also available as a Jupyter notebook:
+#md #     [`plasticity.ipynb`](@__NBVIEWER_ROOT_URL__/examples/plasticity.ipynb)
+#-
+
+# ## Material modeling
+# This section describes the `struct`s and methods used to implement the material
+# model
+
+# ### Material parameters and state variables
+#
+# Start by loading some necessary packages
 using JuAFEM, SparseArrays, LinearAlgebra, Printf
 
+# We define a J₂-plasticity-material, containing material parameters and the elastic
+# stiffness Dᵉ (since it is constant)
 struct J2Plasticity{T, S <: SymmetricTensor{4, 3, T}}
     G::T  # Shear modulus
     K::T  # Bulk modulus
@@ -8,6 +45,7 @@ struct J2Plasticity{T, S <: SymmetricTensor{4, 3, T}}
     Dᵉ::S # Elastic stiffness tensor
 end;
 
+# Next, we define a constructor for the material instance.
 function J2Plasticity(E, ν, σ₀, H)
     δ(i,j) = i == j ? 1.0 : 0.0 # helper function
     G = E / 2(1 + ν)
@@ -19,18 +57,25 @@ function J2Plasticity(E, ν, σ₀, H)
     return J2Plasticity(G, K, σ₀, H, Dᵉ)
 end;
 
+#md # !!! note
+#md #     Above, we defined a constructor `J2Plasticity(E, ν, σ₀, H)` in terms of the more common
+#md #     material parameters ``E`` and ``ν`` - simply as a convenience for the user.
+#md #
+
+# Define a `struct` to store the material state.
 mutable struct MaterialState{T, S <: SecondOrderTensor{3, T}}
-    # Store "converged" values
+    ## Store "converged" values
     ϵᵖ::S # plastic strain
     σ::S # stress
     k::T # hardening variable
 
-    # Store temporary values used during equilibrium iterations
+    ## Store temporary values used during equilibrium iterations
     temp_ϵᵖ::S
     temp_σ::S
     temp_k::T
 end
 
+# Constructor for initializing a material state. Every quantity is set to zero.
 function MaterialState()
     return MaterialState(
                 zero(SymmetricTensor{2, 3}),
@@ -41,24 +86,32 @@ function MaterialState()
                 0.0)
 end
 
+# Next, we define a method to update the material state after equilibrium has
+# been found. This will be called at the end of each time-step.
 function update_state!(state::MaterialState)
     state.ϵᵖ = state.temp_ϵᵖ
     state.σ = state.temp_σ
     state.k = state.temp_k
 end;
-
+# For later use, during the post-processing step, we define a function to
+# compute the von Mises effective stress.
 function vonMises(σ)
     s = dev(σ)
     return sqrt(3.0/2.0 * s ⊡ s)
 end;
 
+# ## Constitutive driver
+#
+# This is the actual method which computes the stress and material tangent
+# stiffness in a given integration point.
+# Input is the current strain and material state.
 function compute_stress_tangent(ϵ::SymmetricTensor{2, 3}, material::J2Plasticity, state::MaterialState)
-    # unpack some material parameters
+    ## unpack some material parameters
     G = material.G
     K = material.K
     H = material.H
 
-    # We use (•)ᵗ to denote *trial*-values
+    ## We use (•)ᵗ to denote *trial*-values
     σᵗ = material.Dᵉ ⊡ (ϵ - state.ϵᵖ) # trial-stress
     sᵗ = dev(σᵗ)         # deviatoric part of trial-stress
     J₂ = 0.5 * sᵗ ⊡ sᵗ   # second invariant of sᵗ
@@ -78,7 +131,7 @@ function compute_stress_tangent(ϵ::SymmetricTensor{2, 3}, material::J2Plasticit
         s = c1 * sᵗ           # updated deviatoric stress
         σ = s + vol(σᵗ)       # updated stress
 
-        # Compute algorithmic tangent stiffness ``D = \frac{\Delta \sigma }{\Delta \epsilon}``
+        ## Compute algorithmic tangent stiffness ``D = \frac{\Delta \sigma }{\Delta \epsilon}``
         κ = H * (state.k + μ) # drag stress
         σₑ = material.σ₀ + κ  # updated yield surface
 
@@ -90,7 +143,7 @@ function compute_stress_tangent(ϵ::SymmetricTensor{2, 3}, material::J2Plasticit
         Dtemp(i,j,k,l) = -2G*b * Q(i,j,k,l) - 9G^2 / (h*σₑ^2) * s[i,j]*s[k,l]
         D = material.Dᵉ + SymmetricTensor{4, 3}(Dtemp)
 
-        # Store outputs in the material state
+        ## Store outputs in the material state
         Δϵᵖ = 3/2 *μ / σₑ*s            # plastic strain
         state.temp_ϵᵖ = state.ϵᵖ + Δϵᵖ  # plastic strain
         state.temp_k = state.k + μ     # hardening variable
@@ -99,21 +152,24 @@ function compute_stress_tangent(ϵ::SymmetricTensor{2, 3}, material::J2Plasticit
     end
 end
 
+# ## FE-problem
+# What follows are methods for assembling and and solving the FE-problem.
 function create_values(interpolation)
-    # setup quadrature rules
+    ## setup quadrature rules
     qr      = QuadratureRule{3,RefTetrahedron}(2)
     face_qr = QuadratureRule{2,RefTetrahedron}(3)
 
-    # create geometric interpolation (use the same as for u)
+    ## create geometric interpolation (use the same as for u)
     interpolation_geom = Lagrange{3,RefTetrahedron,1}()
 
-    # cell and facevalues for u
+    ## cell and facevalues for u
     cellvalues_u = CellVectorValues(qr, interpolation, interpolation_geom)
     facevalues_u = FaceVectorValues(face_qr, interpolation, interpolation_geom)
 
     return cellvalues_u, facevalues_u
 end;
 
+# ### Add degrees of freedom
 function create_dofhandler(grid, interpolation)
     dh = DofHandler(grid)
     dim = 3
@@ -122,9 +178,10 @@ function create_dofhandler(grid, interpolation)
     return dh
 end
 
+# ### Boundary conditions
 function create_bc(dh, grid)
     dbcs = ConstraintHandler(dh)
-    # Clamped on the left side
+    ## Clamped on the left side
     dofs = [1, 2, 3]
     dbc = Dirichlet(:u, getfaceset(grid, "left"), (x,t) -> [0.0, 0.0, 0.0], dofs)
     add!(dbcs, dbc)
@@ -132,6 +189,11 @@ function create_bc(dh, grid)
     return dbcs
 end;
 
+
+# ### Assembling of element contributions
+#
+# * Residual vector `r`
+# * Tangent stiffness `K`
 function doassemble(cellvalues::CellVectorValues{dim},
                     facevalues::FaceVectorValues{dim}, K::SparseMatrixCSC, grid::Grid,
                     dh::DofHandler, material::J2Plasticity, u, states, t) where {dim}
@@ -153,13 +215,18 @@ function doassemble(cellvalues::CellVectorValues{dim},
     return K, r
 end
 
+# Compute element contribution to the residual and the tangent.
+#md # !!! note
+#md #     Due to symmetry, we only compute the lower half of the tangent
+#md #     and then symmetrize it.
+#md #
 function assemble_cell!(Ke, re, cell, cellvalues, facevalues, grid, material,
                         ue, state, t)
     n_basefuncs = getnbasefunctions(cellvalues)
     reinit!(cellvalues, cell)
 
     for q_point in 1:getnquadpoints(cellvalues)
-        # For each integration point, compute stress and material stiffness
+        ## For each integration point, compute stress and material stiffness
         ∇u = function_gradient(cellvalues, q_point, ue)
         ϵ = symmetric(∇u) # Total strain
         σ, D = compute_stress_tangent(ϵ, material, state[q_point])
@@ -177,7 +244,7 @@ function assemble_cell!(Ke, re, cell, cellvalues, facevalues, grid, material,
     end
     symmetrize_lower!(Ke)
 
-    # Add traction as a negative contribution to the element residual `re`:
+    ## Add traction as a negative contribution to the element residual `re`:
     for face in 1:nfaces(cell)
         if onboundary(cell, face) && (cellid(cell), face) ∈ getfaceset(grid, "right")
             reinit!(facevalues, cell, face)
@@ -193,6 +260,7 @@ function assemble_cell!(Ke, re, cell, cellvalues, facevalues, grid, material,
 
 end
 
+# Helper function to symmetrize the material tangent
 function symmetrize_lower!(K)
     for i in 1:size(K,1)
         for j in i+1:size(K,1)
@@ -201,8 +269,9 @@ function symmetrize_lower!(K)
     end
 end;
 
+# Define a function which solves the FE-problem.
 function solve()
-    # Define material parameters
+    ## Define material parameters
     E = 200.0e9 # [Pa]
     H = E/20   # [Pa]
     ν = 0.3     # [-]
@@ -216,7 +285,7 @@ function solve()
     u_max = zeros(n_timesteps)
     traction_magnitude = 1.e7 * range(0.5, 1.0, length=n_timesteps)
 
-    # Create geometry, dofs and boundary conditions
+    ## Create geometry, dofs and boundary conditions
     n = 2
     nels = (10n, n, 2n) # number of elements in each spatial direction
     P1 = Vec((0.0, 0.0, 0.0))  # start point for geometry
@@ -229,22 +298,22 @@ function solve()
 
     cellvalues, facevalues = create_values(interpolation)
 
-    # Pre-allocate solution vectors, etc.
+    ## Pre-allocate solution vectors, etc.
     n_dofs = ndofs(dh)  # total number of dofs
     u  = zeros(n_dofs)  # solution vector
     Δu = zeros(n_dofs)  # displacement correction
     r = zeros(n_dofs)   # residual
     K = create_sparsity_pattern(dh); # tangent stiffness matrix
 
-    # Create material states. One array for each cell, where each element is an array of material-
-    # states - one for each integration point
+    ## Create material states. One array for each cell, where each element is an array of material-
+    ## states - one for each integration point
     nqp = getnquadpoints(cellvalues)
     states = [[MaterialState() for _ in 1:nqp] for _ in 1:getncells(grid)]
 
-    # states = [MaterialState() for _ in 1:nqp for _ in 1:getncells(grid)]
-    # temp_states = [MaterialState() for _ in 1:nqp for _ in 1:getncells(grid)]
+    ## states = [MaterialState() for _ in 1:nqp for _ in 1:getncells(grid)]
+    ## temp_states = [MaterialState() for _ in 1:nqp for _ in 1:getncells(grid)]
 
-    # Newton-Raphson loop
+    ## Newton-Raphson loop
     NEWTON_TOL = 1 # 1 N
     print("\n Starting Netwon iterations:\n")
 
@@ -276,17 +345,17 @@ function solve()
             u -= Δu
         end
 
-        # Update all the material states after we have reached equilibrium
+        ## Update all the material states after we have reached equilibrium
         for cell_states in states
             foreach(update_state!, cell_states)
         end
         u_max[timestep] = max(abs.(u)...) # maximum displacement in current timestep
     end
 
-    # ## Postprocessing
-    # Only a vtu-file corrsponding to the last time-step is exported.
-    #
-    # The following is a quick (and dirty) way of extracting average cell data for export.
+    ## ## Postprocessing
+    ## Only a vtu-file corrsponding to the last time-step is exported.
+    ##
+    ## The following is a quick (and dirty) way of extracting average cell data for export.
     mises_values = zeros(getncells(grid))
     κ_values = zeros(getncells(grid))
     for (el, cell_states) in enumerate(states)
@@ -306,8 +375,11 @@ function solve()
     return u_max, traction_magnitude
 end
 
+# Solve the FE-problem and for each time-step extract maximum displacement and
+# the corresponding traction load. Also compute the limit-traction-load
 u_max, traction_magnitude = solve();
 
+# Finally we plot the load-displacement curve.
 using Plots
 plot(
     vcat(0.0, u_max),                # add the origin as a point
@@ -320,5 +392,19 @@ plot(
 ylabel!("Traction [Pa]")
 xlabel!("Maximum deflection [m]")
 
-# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
 
+# *Figure 2.* Load-displacement-curve for the beam, showing a clear decrease
+# in stiffness as more material starts to yield.
+
+## test the result                       #src
+using Test                               #src
+@test norm(u_max[end]) ≈ 0.2544526451    #src
+
+#md # ## [Raw source](@id plasticity-raw-code)
+#md #
+#md # Below follows a version of the program without any comments.
+#md # The file is also available here: [plasticity.jl](plasticity.jl)
+#md #
+#md # ```julia
+#md # @__CODE__
+#md # ```
