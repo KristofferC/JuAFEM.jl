@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>von Mises plasticity · JuAFEM.jl</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.8.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdn.jsdelivr.net/npm/katex@0.10.2/dist/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">JuAFEM.jl</span></div><form class="docs-search" action="../search.html"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../index.html">Home</a></li><li><a class="tocitem" href="../manual/fe_intro.html">Introduction to FEM</a></li><li><span class="tocitem">Manual</span><ul><li><a class="tocitem" href="../manual/degrees_of_freedom.html">Degrees of Freedom</a></li><li><a class="tocitem" href="../manual/assembly.html">Assembly</a></li><li><a class="tocitem" href="../manual/boundary_conditions.html">Boundary Conditions</a></li><li><a class="tocitem" href="../manual/grid.html">Grid</a></li><li><a class="tocitem" href="../manual/export.html">Export</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="heat_equation.html">Heat Equation</a></li><li><a class="tocitem" href="incompressible_elasticity.html">Incompressible Elasticity</a></li><li><a class="tocitem" href="hyperelasticity.html">Hyperelasticity</a></li><li><a class="tocitem" href="threaded_assembly.html">Threaded Assembly</a></li><li class="is-active"><a class="tocitem" href="plasticity.html">von Mises plasticity</a><ul class="internal"><li><a class="tocitem" href="#Introduction-1"><span>Introduction</span></a></li><li><a class="tocitem" href="#Material-modeling-1"><span>Material modeling</span></a></li><li><a class="tocitem" href="#Constitutive-driver-1"><span>Constitutive driver</span></a></li><li><a class="tocitem" href="#FE-problem-1"><span>FE-problem</span></a></li><li><a class="tocitem" href="#plasticity-raw-code-1"><span>Raw source</span></a></li></ul></li></ul></li><li><span class="tocitem">API Reference</span><ul><li><a class="tocitem" href="../reference/quadrature.html">Quadrature</a></li><li><a class="tocitem" href="../reference/interpolations.html">Interpolation</a></li><li><a class="tocitem" href="../reference/fevalues.html">FEValues</a></li><li><a class="tocitem" href="../reference/dofhandler.html">DofHandler</a></li><li><a class="tocitem" href="../reference/assembly.html">Assembly</a></li><li><a class="tocitem" href="../reference/boundary_conditions.html">Boundary Conditions</a></li><li><a class="tocitem" href="../reference/grid.html">Grid</a></li><li><a class="tocitem" href="../reference/export.html">Export</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href="plasticity.html">von Mises plasticity</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href="plasticity.html">von Mises plasticity</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/KristofferC/JuAFEM.jl/blob/master/docs/src/literate/plasticity.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="von-Mises-plasticity-1">von Mises plasticity<a class="docs-heading-anchor" href="#von-Mises-plasticity-1" title="Permalink"></a></h1><p><img src="plasticity.png" alt="Shows the von Mises stress distribution in a cantilever beam."/> <em>Figure 1.</em> A coarse mesh solution of a cantilever beam subjected to a load causing plastic deformations. The initial yield limit is 200 MPa but due to hardening it increases up to approximately 240 MPa.</p><h2 id="Introduction-1">Introduction<a class="docs-heading-anchor" href="#Introduction-1" title="Permalink"></a></h2><p>This example illustrates the use of a nonlinear material model in JuAFEM. The particular model is von Mises plasticity (also know as J₂-plasticity) with isotropic hardening. The model is fully 3D, meaning that no assumptions like <em>plane stress</em> or <em>plane strain</em> are introduced.</p><p>Also note that the theory of the model is not described here, instead one is referred to standard textbooks on material modeling.</p><p>To illustrate the use of the plasticity model, we setup and solve a FE-problem consisting of a cantilever beam loaded at its free end. But first, we shortly describe the parts of the implementation deadling with the material modeling.</p><div class="admonition is-success"><header class="admonition-header">Tip</header><div class="admonition-body"><p>This example is also available as a Jupyter notebook: <a href="https://nbviewer.jupyter.org/github/KristofferC/JuAFEM.jl/blob/gh-pages/dev/examples/plasticity.ipynb"><code>plasticity.ipynb</code></a></p></div></div><h2 id="Material-modeling-1">Material modeling<a class="docs-heading-anchor" href="#Material-modeling-1" title="Permalink"></a></h2><p>This section describes the <code>struct</code>s and methods used to implement the material model</p><h3 id="Material-parameters-and-state-variables-1">Material parameters and state variables<a class="docs-heading-anchor" href="#Material-parameters-and-state-variables-1" title="Permalink"></a></h3><p>Start by loading some necessary packages</p><pre><code class="language-julia">using JuAFEM, SparseArrays, LinearAlgebra, Printf</code></pre><p>We define a J₂-plasticity-material, containing material parameters and the elastic stiffness Dᵉ (since it is constant)</p><pre><code class="language-julia">struct J2Plasticity{T, S &lt;: SymmetricTensor{4, 3, T}}
+    G::T  # Shear modulus
+    K::T  # Bulk modulus
+    σ₀::T # Initial yield limit
+    H::T  # Hardening modulus
+    Dᵉ::S # Elastic stiffness tensor
+end;</code></pre><p>Next, we define a constructor for the material instance.</p><pre><code class="language-julia">function J2Plasticity(E, ν, σ₀, H)
+    δ(i,j) = i == j ? 1.0 : 0.0 # helper function
+    G = E / 2(1 + ν)
+    K = E / 3(1 - 2ν)
+
+    Isymdev(i,j,k,l) = 0.5*(δ(i,k)*δ(j,l) + δ(i,l)*δ(j,k)) - 1.0/3.0*δ(i,j)*δ(k,l)
+    temp(i,j,k,l) = 2.0G *( 0.5*(δ(i,k)*δ(j,l) + δ(i,l)*δ(j,k)) + ν/(1.0-2.0ν)*δ(i,j)*δ(k,l))
+    Dᵉ = SymmetricTensor{4, 3}(temp)
+    return J2Plasticity(G, K, σ₀, H, Dᵉ)
+end;</code></pre><pre><code class="language-none">Main.ex-plasticity.J2Plasticity</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Above, we defined a constructor <code>J2Plasticity(E, ν, σ₀, H)</code> in terms of the more common material parameters <span>$E$</span> and <span>$ν$</span> - simply as a convenience for the user.</p></div></div><p>Define a <code>struct</code> to store the material state.</p><pre><code class="language-julia">mutable struct MaterialState{T, S &lt;: SecondOrderTensor{3, T}}
+    # Store &quot;converged&quot; values
+    ϵᵖ::S # plastic strain
+    σ::S # stress
+    k::T # hardening variable
+
+    # Store temporary values used during equilibrium iterations
+    temp_ϵᵖ::S
+    temp_σ::S
+    temp_k::T
+end</code></pre><p>Constructor for initializing a material state. Every quantity is set to zero.</p><pre><code class="language-julia">function MaterialState()
+    return MaterialState(
+                zero(SymmetricTensor{2, 3}),
+                zero(SymmetricTensor{2, 3}),
+                0.0,
+                zero(SymmetricTensor{2, 3}),
+                zero(SymmetricTensor{2, 3}),
+                0.0)
+end</code></pre><pre><code class="language-none">Main.ex-plasticity.MaterialState</code></pre><p>Next, we define a method to update the material state after equilibrium has been found. This will be called at the end of each time-step.</p><pre><code class="language-julia">function update_state!(state::MaterialState)
+    state.ϵᵖ = state.temp_ϵᵖ
+    state.σ = state.temp_σ
+    state.k = state.temp_k
+end;</code></pre><pre><code class="language-none">update_state! (generic function with 1 method)</code></pre><p>For later use, during the post-processing step, we define a function to compute the von Mises effective stress.</p><pre><code class="language-julia">function vonMises(σ)
+    s = dev(σ)
+    return sqrt(3.0/2.0 * s ⊡ s)
+end;</code></pre><pre><code class="language-none">vonMises (generic function with 1 method)</code></pre><h2 id="Constitutive-driver-1">Constitutive driver<a class="docs-heading-anchor" href="#Constitutive-driver-1" title="Permalink"></a></h2><p>This is the actual method which computes the stress and material tangent stiffness in a given integration point. Input is the current strain and material state.</p><pre><code class="language-julia">function compute_stress_tangent(ϵ::SymmetricTensor{2, 3}, material::J2Plasticity, state::MaterialState)
+    # unpack some material parameters
+    G = material.G
+    K = material.K
+    H = material.H
+
+    # We use (•)ᵗ to denote *trial*-values
+    σᵗ = material.Dᵉ ⊡ (ϵ - state.ϵᵖ) # trial-stress
+    sᵗ = dev(σᵗ)         # deviatoric part of trial-stress
+    J₂ = 0.5 * sᵗ ⊡ sᵗ   # second invariant of sᵗ
+    σᵗₑ = sqrt(3.0*J₂)   # effetive trial-stress (von Mises stress)
+    σʸ = material.σ₀ + H * state.k # Previous yield limit
+
+    φᵗ  = σᵗₑ - σʸ # Trial-value of the yield surface
+
+    if φᵗ &lt; 0.0 # elastic loading
+        state.temp_σ = σᵗ
+        return state.temp_σ, material.Dᵉ
+    else # plastic loading
+        h = H + 3G
+        μ =  φᵗ / h   # plastic multiplier
+
+        c1 = 1 - 3G * μ / σᵗₑ
+        s = c1 * sᵗ           # updated deviatoric stress
+        σ = s + vol(σᵗ)       # updated stress
+
+        # Compute algorithmic tangent stiffness ``D = \frac{\Delta \sigma }{\Delta \epsilon}``
+        κ = H * (state.k + μ) # drag stress
+        σₑ = material.σ₀ + κ  # updated yield surface
+
+        δ(i,j) = i == j ? 1.0 : 0.0
+        Isymdev(i,j,k,l)  = 0.5*(δ(i,k)*δ(j,l) + δ(i,l)*δ(j,k)) - 1.0/3.0*δ(i,j)*δ(k,l)
+        Q(i,j,k,l) = Isymdev(i,j,k,l) - 3.0 / (2.0*σₑ^2) * s[i,j]*s[k,l]
+        b = (3G*μ/σₑ) / (1.0 + 3G*μ/σₑ)
+
+        Dtemp(i,j,k,l) = -2G*b * Q(i,j,k,l) - 9G^2 / (h*σₑ^2) * s[i,j]*s[k,l]
+        D = material.Dᵉ + SymmetricTensor{4, 3}(Dtemp)
+
+        # Store outputs in the material state
+        Δϵᵖ = 3/2 *μ / σₑ*s            # plastic strain
+        state.temp_ϵᵖ = state.ϵᵖ + Δϵᵖ  # plastic strain
+        state.temp_k = state.k + μ     # hardening variable
+        state.temp_σ = σ               # updated stress
+        return state.temp_σ, D
+    end
+end</code></pre><pre><code class="language-none">compute_stress_tangent (generic function with 1 method)</code></pre><h2 id="FE-problem-1">FE-problem<a class="docs-heading-anchor" href="#FE-problem-1" title="Permalink"></a></h2><p>What follows are methods for assembling and and solving the FE-problem.</p><pre><code class="language-julia">function create_values(interpolation)
+    # setup quadrature rules
+    qr      = QuadratureRule{3,RefTetrahedron}(2)
+    face_qr = QuadratureRule{2,RefTetrahedron}(3)
+
+    # create geometric interpolation (use the same as for u)
+    interpolation_geom = Lagrange{3,RefTetrahedron,1}()
+
+    # cell and facevalues for u
+    cellvalues_u = CellVectorValues(qr, interpolation, interpolation_geom)
+    facevalues_u = FaceVectorValues(face_qr, interpolation, interpolation_geom)
+
+    return cellvalues_u, facevalues_u
+end;</code></pre><pre><code class="language-none">create_values (generic function with 1 method)</code></pre><h3 id="Add-degrees-of-freedom-1">Add degrees of freedom<a class="docs-heading-anchor" href="#Add-degrees-of-freedom-1" title="Permalink"></a></h3><pre><code class="language-julia">function create_dofhandler(grid, interpolation)
+    dh = DofHandler(grid)
+    dim = 3
+    push!(dh, :u, dim, interpolation) # add a displacement field with 3 components
+    close!(dh)
+    return dh
+end</code></pre><pre><code class="language-none">create_dofhandler (generic function with 1 method)</code></pre><h3 id="Boundary-conditions-1">Boundary conditions<a class="docs-heading-anchor" href="#Boundary-conditions-1" title="Permalink"></a></h3><pre><code class="language-julia">function create_bc(dh, grid)
+    dbcs = ConstraintHandler(dh)
+    # Clamped on the left side
+    dofs = [1, 2, 3]
+    dbc = Dirichlet(:u, getfaceset(grid, &quot;left&quot;), (x,t) -&gt; [0.0, 0.0, 0.0], dofs)
+    add!(dbcs, dbc)
+    close!(dbcs)
+    return dbcs
+end;</code></pre><pre><code class="language-none">create_bc (generic function with 1 method)</code></pre><h3 id="Assembling-of-element-contributions-1">Assembling of element contributions<a class="docs-heading-anchor" href="#Assembling-of-element-contributions-1" title="Permalink"></a></h3><ul><li>Residual vector <code>r</code></li><li>Tangent stiffness <code>K</code></li></ul><pre><code class="language-julia">function doassemble(cellvalues::CellVectorValues{dim},
+                    facevalues::FaceVectorValues{dim}, K::SparseMatrixCSC, grid::Grid,
+                    dh::DofHandler, material::J2Plasticity, u, states, t) where {dim}
+    r = zeros(ndofs(dh))
+    assembler = start_assemble(K, r)
+    nu = getnbasefunctions(cellvalues)
+    re = zeros(nu)     # element residual vector
+    ke = zeros(nu, nu) # element tangent matrix
+
+    for (cell, state) in zip(CellIterator(dh), states)
+        fill!(ke, 0)
+        fill!(re, 0)
+        eldofs = celldofs(cell)
+        ue = u[eldofs]
+        assemble_cell!(ke, re, cell, cellvalues, facevalues, grid, material,
+                       ue, state, t)
+        assemble!(assembler, eldofs, re, ke)
+    end
+    return K, r
+end</code></pre><pre><code class="language-none">doassemble (generic function with 1 method)</code></pre><p>Compute element contribution to the residual and the tangent.</p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Due to symmetry, we only compute the lower half of the tangent and then symmetrize it.</p></div></div><pre><code class="language-julia">function assemble_cell!(Ke, re, cell, cellvalues, facevalues, grid, material,
+                        ue, state, t)
+    n_basefuncs = getnbasefunctions(cellvalues)
+    reinit!(cellvalues, cell)
+
+    for q_point in 1:getnquadpoints(cellvalues)
+        # For each integration point, compute stress and material stiffness
+        ∇u = function_gradient(cellvalues, q_point, ue)
+        ϵ = symmetric(∇u) # Total strain
+        σ, D = compute_stress_tangent(ϵ, material, state[q_point])
+
+        dΩ = getdetJdV(cellvalues, q_point)
+        for i in 1:n_basefuncs
+            δϵ = symmetric(shape_gradient(cellvalues, q_point, i))
+
+            re[i] += (δϵ ⊡ σ) * dΩ # add internal force to residual
+            for j in 1:i
+                Δϵ = symmetric(shape_gradient(cellvalues, q_point, j))
+                Ke[i, j] += δϵ ⊡ D ⊡ Δϵ * dΩ
+            end
+        end
+    end
+    symmetrize_lower!(Ke)
+
+    # Add traction as a negative contribution to the element residual `re`:
+    for face in 1:nfaces(cell)
+        if onboundary(cell, face) &amp;&amp; (cellid(cell), face) ∈ getfaceset(grid, &quot;right&quot;)
+            reinit!(facevalues, cell, face)
+            for q_point in 1:getnquadpoints(facevalues)
+                dΓ = getdetJdV(facevalues, q_point)
+                for i in 1:n_basefuncs
+                    δu = shape_value(facevalues, q_point, i)
+                    re[i] -= (δu ⋅ t) * dΓ
+                end
+            end
+        end
+    end
+
+end</code></pre><pre><code class="language-none">assemble_cell! (generic function with 1 method)</code></pre><p>Helper function to symmetrize the material tangent</p><pre><code class="language-julia">function symmetrize_lower!(K)
+    for i in 1:size(K,1)
+        for j in i+1:size(K,1)
+            K[i,j] = K[j,i]
+        end
+    end
+end;</code></pre><pre><code class="language-none">symmetrize_lower! (generic function with 1 method)</code></pre><p>Define a function which solves the FE-problem.</p><pre><code class="language-julia">function solve()
+    # Define material parameters
+    E = 200.0e9 # [Pa]
+    H = E/20   # [Pa]
+    ν = 0.3     # [-]
+    σ₀ = 200e6  # [Pa]
+    material = J2Plasticity(E, ν, σ₀, H)
+
+    L = 10.0 # beam length [m]
+    w = 1.0  # beam width [m]
+    h = 1.0  # beam height[m]
+    n_timesteps = 10
+    u_max = zeros(n_timesteps)
+    traction_magnitude = 1.e7 * range(0.5, 1.0, length=n_timesteps)
+
+    # Create geometry, dofs and boundary conditions
+    n = 2
+    nels = (10n, n, 2n) # number of elements in each spatial direction
+    P1 = Vec((0.0, 0.0, 0.0))  # start point for geometry
+    P2 = Vec((L, w, h))        # end point for geometry
+    grid = generate_grid(Tetrahedron, nels, P1, P2)
+    interpolation = Lagrange{3, RefTetrahedron, 1}() # Linear tet with 3 unknowns/node
+
+    dh = create_dofhandler(grid, interpolation) # JuaFEM helper function
+    dbcs = create_bc(dh, grid) # create Dirichlet boundary-conditions
+
+    cellvalues, facevalues = create_values(interpolation)
+
+    # Pre-allocate solution vectors, etc.
+    n_dofs = ndofs(dh)  # total number of dofs
+    u  = zeros(n_dofs)  # solution vector
+    Δu = zeros(n_dofs)  # displacement correction
+    r = zeros(n_dofs)   # residual
+    K = create_sparsity_pattern(dh); # tangent stiffness matrix
+
+    # Create material states. One array for each cell, where each element is an array of material-
+    # states - one for each integration point
+    nqp = getnquadpoints(cellvalues)
+    states = [[MaterialState() for _ in 1:nqp] for _ in 1:getncells(grid)]
+
+    # states = [MaterialState() for _ in 1:nqp for _ in 1:getncells(grid)]
+    # temp_states = [MaterialState() for _ in 1:nqp for _ in 1:getncells(grid)]
+
+    # Newton-Raphson loop
+    NEWTON_TOL = 1 # 1 N
+    print(&quot;\n Starting Netwon iterations:\n&quot;)
+
+    for timestep in 1:n_timesteps
+        t = timestep # actual time (used for evaluating d-bndc)
+        traction = Vec((0.0, 0.0, traction_magnitude[timestep]))
+        newton_itr = -1
+        print(&quot;\n Time step @time = $timestep:\n&quot;)
+        update!(dbcs, t) # evaluates the D-bndc at time t
+        apply!(u, dbcs)  # set the prescribed values in the solution vector
+
+        while true; newton_itr += 1
+
+            if newton_itr &gt; 8
+                error(&quot;Reached maximum Newton iterations, aborting&quot;)
+                break
+            end
+            K, r = doassemble(cellvalues, facevalues, K, grid, dh, material, u,
+                             states, traction);
+            norm_r = norm(r[JuAFEM.free_dofs(dbcs)])
+
+            print(&quot;Iteration: $newton_itr \tresidual: $(@sprintf(&quot;%.8f&quot;, norm_r))\n&quot;)
+            if norm_r &lt; NEWTON_TOL
+                break
+            end
+
+            apply_zero!(K, r, dbcs)
+            Δu = Symmetric(K) \ r
+            u -= Δu
+        end
+
+        # Update all the material states after we have reached equilibrium
+        for cell_states in states
+            foreach(update_state!, cell_states)
+        end
+        u_max[timestep] = max(abs.(u)...) # maximum displacement in current timestep
+    end
+
+    # ## Postprocessing
+    # Only a vtu-file corrsponding to the last time-step is exported.
+    #
+    # The following is a quick (and dirty) way of extracting average cell data for export.
+    mises_values = zeros(getncells(grid))
+    κ_values = zeros(getncells(grid))
+    for (el, cell_states) in enumerate(states)
+        for state in cell_states
+            mises_values[el] += vonMises(state.σ)
+            κ_values[el] += state.k*material.H
+        end
+        mises_values[el] /= length(cell_states) # average von Mises stress
+        κ_values[el] /= length(cell_states)     # average drag stress
+    end
+    vtk_grid(&quot;plasticity&quot;, dh) do vtkfile
+        vtk_point_data(vtkfile, dh, u) # displacement field
+        vtk_cell_data(vtkfile, mises_values, &quot;von Mises [Pa]&quot;)
+        vtk_cell_data(vtkfile, κ_values, &quot;Drag stress [Pa]&quot;)
+    end
+
+    return u_max, traction_magnitude
+end</code></pre><pre><code class="language-none">solve (generic function with 1 method)</code></pre><p>Solve the FE-problem and for each time-step extract maximum displacement and the corresponding traction load. Also compute the limit-traction-load</p><pre><code class="language-julia">u_max, traction_magnitude = solve();</code></pre><pre><code class="language-none">([0.06817024083483487, 0.07622793246254089, 0.08587448720371892, 0.09686447642104688, 0.10978786077390501, 0.1267259061786578, 0.15061988797806156, 0.18072577419235383, 0.21548754967141442, 0.2544526450643443], 5.0e6:555555.5555555555:1.0e7)</code></pre><p>Finally we plot the load-displacement curve.</p><pre><code class="language-julia">using Plots
+plot(
+    vcat(0.0, u_max),                # add the origin as a point
+    vcat(0.0, traction_magnitude),
+    linewidth=2,
+    title=&quot;Traction-displacement&quot;,
+    label=[&quot;&quot;],
+    markershape=:auto
+    )
+ylabel!(&quot;Traction [Pa]&quot;)
+xlabel!(&quot;Maximum deflection [m]&quot;)</code></pre><?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="600" height="400" viewBox="0 0 2400 1600">
+<defs>
+  <clipPath id="clip3000">
+    <rect x="0" y="0" width="2400" height="1600"/>
+  </clipPath>
+</defs>
+<path clip-path="url(#clip3000)" d="
+M0 1600 L2400 1600 L2400 0 L0 0  Z
+  " fill="#ffffff" fill-rule="evenodd" fill-opacity="1"/>
+<defs>
+  <clipPath id="clip3001">
+    <rect x="480" y="0" width="1681" height="1600"/>
+  </clipPath>
+</defs>
+<path clip-path="url(#clip3000)" d="
+M102.74 1505.26 L2352.76 1505.26 L2352.76 62.9921 L102.74 62.9921  Z
+  " fill="#ffffff" fill-rule="evenodd" fill-opacity="1"/>
+<defs>
+  <clipPath id="clip3002">
+    <rect x="102" y="62" width="2251" height="1443"/>
+  </clipPath>
+</defs>
+<polyline clip-path="url(#clip3002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  166.42,1505.26 166.42,62.9921 
+  "/>
+<polyline clip-path="url(#clip3002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  583.522,1505.26 583.522,62.9921 
+  "/>
+<polyline clip-path="url(#clip3002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  1000.62,1505.26 1000.62,62.9921 
+  "/>
+<polyline clip-path="url(#clip3002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  1417.73,1505.26 1417.73,62.9921 
+  "/>
+<polyline clip-path="url(#clip3002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  1834.83,1505.26 1834.83,62.9921 
+  "/>
+<polyline clip-path="url(#clip3002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  2251.93,1505.26 2251.93,62.9921 
+  "/>
+<polyline clip-path="url(#clip3002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  102.74,1464.44 2352.76,1464.44 
+  "/>
+<polyline clip-path="url(#clip3002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  102.74,1124.28 2352.76,1124.28 
+  "/>
+<polyline clip-path="url(#clip3002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  102.74,784.126 2352.76,784.126 
+  "/>
+<polyline clip-path="url(#clip3002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  102.74,443.969 2352.76,443.969 
+  "/>
+<polyline clip-path="url(#clip3002)" style="stroke:#000000; stroke-width:2; stroke-opacity:0.1; fill:none" points="
+  102.74,103.811 2352.76,103.811 
+  "/>
+<polyline clip-path="url(#clip3000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  102.74,1505.26 2352.76,1505.26 
+  "/>
+<polyline clip-path="url(#clip3000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  102.74,1505.26 102.74,62.9921 
+  "/>
+<polyline clip-path="url(#clip3000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  166.42,1505.26 166.42,1483.63 
+  "/>
+<polyline clip-path="url(#clip3000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  583.522,1505.26 583.522,1483.63 
+  "/>
+<polyline clip-path="url(#clip3000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  1000.62,1505.26 1000.62,1483.63 
+  "/>
+<polyline clip-path="url(#clip3000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  1417.73,1505.26 1417.73,1483.63 
+  "/>
+<polyline clip-path="url(#clip3000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  1834.83,1505.26 1834.83,1483.63 
+  "/>
+<polyline clip-path="url(#clip3000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  2251.93,1505.26 2251.93,1483.63 
+  "/>
+<polyline clip-path="url(#clip3000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  102.74,1464.44 136.49,1464.44 
+  "/>
+<polyline clip-path="url(#clip3000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  102.74,1124.28 136.49,1124.28 
+  "/>
+<polyline clip-path="url(#clip3000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  102.74,784.126 136.49,784.126 
+  "/>
+<polyline clip-path="url(#clip3000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  102.74,443.969 136.49,443.969 
+  "/>
+<polyline clip-path="url(#clip3000)" style="stroke:#000000; stroke-width:4; stroke-opacity:1; fill:none" points="
+  102.74,103.811 136.49,103.811 
+  "/>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 166.42, 1559.26)" x="166.42" y="1559.26">0.00</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 583.522, 1559.26)" x="583.522" y="1559.26">0.05</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 1000.62, 1559.26)" x="1000.62" y="1559.26">0.10</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 1417.73, 1559.26)" x="1417.73" y="1559.26">0.15</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 1834.83, 1559.26)" x="1834.83" y="1559.26">0.20</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:middle;" transform="rotate(0, 2251.93, 1559.26)" x="2251.93" y="1559.26">0.25</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:end;" transform="rotate(0, 78.7402, 1481.94)" x="78.7402" y="1481.94">0</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:start;" transform="rotate(0, -91.5449, 1148.01)" x="-91.5449" y="1148.01">2.5×10</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:38px; text-anchor:start;" transform="rotate(0, 56.9958, 1120.6)" x="56.9958" y="1120.6">6</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:start;" transform="rotate(0, -91.5449, 807.854)" x="-91.5449" y="807.854">5.0×10</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:38px; text-anchor:start;" transform="rotate(0, 56.9958, 780.443)" x="56.9958" y="780.443">6</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:start;" transform="rotate(0, -91.5449, 467.696)" x="-91.5449" y="467.696">7.5×10</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:38px; text-anchor:start;" transform="rotate(0, 56.9958, 440.286)" x="56.9958" y="440.286">6</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:48px; text-anchor:start;" transform="rotate(0, -91.5449, 127.539)" x="-91.5449" y="127.539">1.0×10</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:38px; text-anchor:start;" transform="rotate(0, 56.9958, 100.128)" x="56.9958" y="100.128">7</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:84px; text-anchor:middle;" transform="rotate(0, 1227.75, 73.2)" x="1227.75" y="73.2">Traction-displacement</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:66px; text-anchor:middle;" transform="rotate(0, 1227.75, 1639.12)" x="1227.75" y="1639.12">Maximum deflection [m]</text>
+</g>
+<g clip-path="url(#clip3000)">
+<text style="fill:#000000; fill-opacity:1; font-family:Arial,Helvetica Neue,Helvetica,sans-serif; font-size:66px; text-anchor:middle;" transform="rotate(-90, -170.247, 784.126)" x="-170.247" y="784.126">Traction [Pa]</text>
+</g>
+<polyline clip-path="url(#clip3002)" style="stroke:#009af9; stroke-width:8; stroke-opacity:1; fill:none" points="
+  166.42,1464.44 735.099,784.126 802.317,708.535 882.789,632.945 974.468,557.354 1082.28,481.764 1223.57,406.173 1422.9,330.583 1674.04,254.992 1964.03,179.402 
+  2289.08,103.811 
+  "/>
+<circle clip-path="url(#clip3002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="166.42" cy="1464.44" r="18"/>
+<circle clip-path="url(#clip3002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="166.42" cy="1464.44" r="14"/>
+<circle clip-path="url(#clip3002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="735.099" cy="784.126" r="18"/>
+<circle clip-path="url(#clip3002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="735.099" cy="784.126" r="14"/>
+<circle clip-path="url(#clip3002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="802.317" cy="708.535" r="18"/>
+<circle clip-path="url(#clip3002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="802.317" cy="708.535" r="14"/>
+<circle clip-path="url(#clip3002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="882.789" cy="632.945" r="18"/>
+<circle clip-path="url(#clip3002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="882.789" cy="632.945" r="14"/>
+<circle clip-path="url(#clip3002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="974.468" cy="557.354" r="18"/>
+<circle clip-path="url(#clip3002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="974.468" cy="557.354" r="14"/>
+<circle clip-path="url(#clip3002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1082.28" cy="481.764" r="18"/>
+<circle clip-path="url(#clip3002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1082.28" cy="481.764" r="14"/>
+<circle clip-path="url(#clip3002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1223.57" cy="406.173" r="18"/>
+<circle clip-path="url(#clip3002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1223.57" cy="406.173" r="14"/>
+<circle clip-path="url(#clip3002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1422.9" cy="330.583" r="18"/>
+<circle clip-path="url(#clip3002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1422.9" cy="330.583" r="14"/>
+<circle clip-path="url(#clip3002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1674.04" cy="254.992" r="18"/>
+<circle clip-path="url(#clip3002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1674.04" cy="254.992" r="14"/>
+<circle clip-path="url(#clip3002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="1964.03" cy="179.402" r="18"/>
+<circle clip-path="url(#clip3002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="1964.03" cy="179.402" r="14"/>
+<circle clip-path="url(#clip3002)" style="fill:#000000; stroke:none; fill-opacity:1" cx="2289.08" cy="103.811" r="18"/>
+<circle clip-path="url(#clip3002)" style="fill:#009af9; stroke:none; fill-opacity:1" cx="2289.08" cy="103.811" r="14"/>
+</svg>
+<p><em>Figure 2.</em> Load-displacement-curve for the beam, showing a clear decrease in stiffness as more material starts to yield.</p><h2 id="plasticity-raw-code-1">Raw source<a class="docs-heading-anchor" href="#plasticity-raw-code-1" title="Permalink"></a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="plasticity.jl">plasticity.jl</a></p><pre><code class="language-julia">using JuAFEM, SparseArrays, LinearAlgebra, Printf
+
+struct J2Plasticity{T, S &lt;: SymmetricTensor{4, 3, T}}
+    G::T  # Shear modulus
+    K::T  # Bulk modulus
+    σ₀::T # Initial yield limit
+    H::T  # Hardening modulus
+    Dᵉ::S # Elastic stiffness tensor
+end;
+
+function J2Plasticity(E, ν, σ₀, H)
+    δ(i,j) = i == j ? 1.0 : 0.0 # helper function
+    G = E / 2(1 + ν)
+    K = E / 3(1 - 2ν)
+
+    Isymdev(i,j,k,l) = 0.5*(δ(i,k)*δ(j,l) + δ(i,l)*δ(j,k)) - 1.0/3.0*δ(i,j)*δ(k,l)
+    temp(i,j,k,l) = 2.0G *( 0.5*(δ(i,k)*δ(j,l) + δ(i,l)*δ(j,k)) + ν/(1.0-2.0ν)*δ(i,j)*δ(k,l))
+    Dᵉ = SymmetricTensor{4, 3}(temp)
+    return J2Plasticity(G, K, σ₀, H, Dᵉ)
+end;
+
+mutable struct MaterialState{T, S &lt;: SecondOrderTensor{3, T}}
+    # Store &quot;converged&quot; values
+    ϵᵖ::S # plastic strain
+    σ::S # stress
+    k::T # hardening variable
+
+    # Store temporary values used during equilibrium iterations
+    temp_ϵᵖ::S
+    temp_σ::S
+    temp_k::T
+end
+
+function MaterialState()
+    return MaterialState(
+                zero(SymmetricTensor{2, 3}),
+                zero(SymmetricTensor{2, 3}),
+                0.0,
+                zero(SymmetricTensor{2, 3}),
+                zero(SymmetricTensor{2, 3}),
+                0.0)
+end
+
+function update_state!(state::MaterialState)
+    state.ϵᵖ = state.temp_ϵᵖ
+    state.σ = state.temp_σ
+    state.k = state.temp_k
+end;
+
+function vonMises(σ)
+    s = dev(σ)
+    return sqrt(3.0/2.0 * s ⊡ s)
+end;
+
+function compute_stress_tangent(ϵ::SymmetricTensor{2, 3}, material::J2Plasticity, state::MaterialState)
+    # unpack some material parameters
+    G = material.G
+    K = material.K
+    H = material.H
+
+    # We use (•)ᵗ to denote *trial*-values
+    σᵗ = material.Dᵉ ⊡ (ϵ - state.ϵᵖ) # trial-stress
+    sᵗ = dev(σᵗ)         # deviatoric part of trial-stress
+    J₂ = 0.5 * sᵗ ⊡ sᵗ   # second invariant of sᵗ
+    σᵗₑ = sqrt(3.0*J₂)   # effetive trial-stress (von Mises stress)
+    σʸ = material.σ₀ + H * state.k # Previous yield limit
+
+    φᵗ  = σᵗₑ - σʸ # Trial-value of the yield surface
+
+    if φᵗ &lt; 0.0 # elastic loading
+        state.temp_σ = σᵗ
+        return state.temp_σ, material.Dᵉ
+    else # plastic loading
+        h = H + 3G
+        μ =  φᵗ / h   # plastic multiplier
+
+        c1 = 1 - 3G * μ / σᵗₑ
+        s = c1 * sᵗ           # updated deviatoric stress
+        σ = s + vol(σᵗ)       # updated stress
+
+        # Compute algorithmic tangent stiffness ``D = \frac{\Delta \sigma }{\Delta \epsilon}``
+        κ = H * (state.k + μ) # drag stress
+        σₑ = material.σ₀ + κ  # updated yield surface
+
+        δ(i,j) = i == j ? 1.0 : 0.0
+        Isymdev(i,j,k,l)  = 0.5*(δ(i,k)*δ(j,l) + δ(i,l)*δ(j,k)) - 1.0/3.0*δ(i,j)*δ(k,l)
+        Q(i,j,k,l) = Isymdev(i,j,k,l) - 3.0 / (2.0*σₑ^2) * s[i,j]*s[k,l]
+        b = (3G*μ/σₑ) / (1.0 + 3G*μ/σₑ)
+
+        Dtemp(i,j,k,l) = -2G*b * Q(i,j,k,l) - 9G^2 / (h*σₑ^2) * s[i,j]*s[k,l]
+        D = material.Dᵉ + SymmetricTensor{4, 3}(Dtemp)
+
+        # Store outputs in the material state
+        Δϵᵖ = 3/2 *μ / σₑ*s            # plastic strain
+        state.temp_ϵᵖ = state.ϵᵖ + Δϵᵖ  # plastic strain
+        state.temp_k = state.k + μ     # hardening variable
+        state.temp_σ = σ               # updated stress
+        return state.temp_σ, D
+    end
+end
+
+function create_values(interpolation)
+    # setup quadrature rules
+    qr      = QuadratureRule{3,RefTetrahedron}(2)
+    face_qr = QuadratureRule{2,RefTetrahedron}(3)
+
+    # create geometric interpolation (use the same as for u)
+    interpolation_geom = Lagrange{3,RefTetrahedron,1}()
+
+    # cell and facevalues for u
+    cellvalues_u = CellVectorValues(qr, interpolation, interpolation_geom)
+    facevalues_u = FaceVectorValues(face_qr, interpolation, interpolation_geom)
+
+    return cellvalues_u, facevalues_u
+end;
+
+function create_dofhandler(grid, interpolation)
+    dh = DofHandler(grid)
+    dim = 3
+    push!(dh, :u, dim, interpolation) # add a displacement field with 3 components
+    close!(dh)
+    return dh
+end
+
+function create_bc(dh, grid)
+    dbcs = ConstraintHandler(dh)
+    # Clamped on the left side
+    dofs = [1, 2, 3]
+    dbc = Dirichlet(:u, getfaceset(grid, &quot;left&quot;), (x,t) -&gt; [0.0, 0.0, 0.0], dofs)
+    add!(dbcs, dbc)
+    close!(dbcs)
+    return dbcs
+end;
+
+function doassemble(cellvalues::CellVectorValues{dim},
+                    facevalues::FaceVectorValues{dim}, K::SparseMatrixCSC, grid::Grid,
+                    dh::DofHandler, material::J2Plasticity, u, states, t) where {dim}
+    r = zeros(ndofs(dh))
+    assembler = start_assemble(K, r)
+    nu = getnbasefunctions(cellvalues)
+    re = zeros(nu)     # element residual vector
+    ke = zeros(nu, nu) # element tangent matrix
+
+    for (cell, state) in zip(CellIterator(dh), states)
+        fill!(ke, 0)
+        fill!(re, 0)
+        eldofs = celldofs(cell)
+        ue = u[eldofs]
+        assemble_cell!(ke, re, cell, cellvalues, facevalues, grid, material,
+                       ue, state, t)
+        assemble!(assembler, eldofs, re, ke)
+    end
+    return K, r
+end
+
+function assemble_cell!(Ke, re, cell, cellvalues, facevalues, grid, material,
+                        ue, state, t)
+    n_basefuncs = getnbasefunctions(cellvalues)
+    reinit!(cellvalues, cell)
+
+    for q_point in 1:getnquadpoints(cellvalues)
+        # For each integration point, compute stress and material stiffness
+        ∇u = function_gradient(cellvalues, q_point, ue)
+        ϵ = symmetric(∇u) # Total strain
+        σ, D = compute_stress_tangent(ϵ, material, state[q_point])
+
+        dΩ = getdetJdV(cellvalues, q_point)
+        for i in 1:n_basefuncs
+            δϵ = symmetric(shape_gradient(cellvalues, q_point, i))
+
+            re[i] += (δϵ ⊡ σ) * dΩ # add internal force to residual
+            for j in 1:i
+                Δϵ = symmetric(shape_gradient(cellvalues, q_point, j))
+                Ke[i, j] += δϵ ⊡ D ⊡ Δϵ * dΩ
+            end
+        end
+    end
+    symmetrize_lower!(Ke)
+
+    # Add traction as a negative contribution to the element residual `re`:
+    for face in 1:nfaces(cell)
+        if onboundary(cell, face) &amp;&amp; (cellid(cell), face) ∈ getfaceset(grid, &quot;right&quot;)
+            reinit!(facevalues, cell, face)
+            for q_point in 1:getnquadpoints(facevalues)
+                dΓ = getdetJdV(facevalues, q_point)
+                for i in 1:n_basefuncs
+                    δu = shape_value(facevalues, q_point, i)
+                    re[i] -= (δu ⋅ t) * dΓ
+                end
+            end
+        end
+    end
+
+end
+
+function symmetrize_lower!(K)
+    for i in 1:size(K,1)
+        for j in i+1:size(K,1)
+            K[i,j] = K[j,i]
+        end
+    end
+end;
+
+function solve()
+    # Define material parameters
+    E = 200.0e9 # [Pa]
+    H = E/20   # [Pa]
+    ν = 0.3     # [-]
+    σ₀ = 200e6  # [Pa]
+    material = J2Plasticity(E, ν, σ₀, H)
+
+    L = 10.0 # beam length [m]
+    w = 1.0  # beam width [m]
+    h = 1.0  # beam height[m]
+    n_timesteps = 10
+    u_max = zeros(n_timesteps)
+    traction_magnitude = 1.e7 * range(0.5, 1.0, length=n_timesteps)
+
+    # Create geometry, dofs and boundary conditions
+    n = 2
+    nels = (10n, n, 2n) # number of elements in each spatial direction
+    P1 = Vec((0.0, 0.0, 0.0))  # start point for geometry
+    P2 = Vec((L, w, h))        # end point for geometry
+    grid = generate_grid(Tetrahedron, nels, P1, P2)
+    interpolation = Lagrange{3, RefTetrahedron, 1}() # Linear tet with 3 unknowns/node
+
+    dh = create_dofhandler(grid, interpolation) # JuaFEM helper function
+    dbcs = create_bc(dh, grid) # create Dirichlet boundary-conditions
+
+    cellvalues, facevalues = create_values(interpolation)
+
+    # Pre-allocate solution vectors, etc.
+    n_dofs = ndofs(dh)  # total number of dofs
+    u  = zeros(n_dofs)  # solution vector
+    Δu = zeros(n_dofs)  # displacement correction
+    r = zeros(n_dofs)   # residual
+    K = create_sparsity_pattern(dh); # tangent stiffness matrix
+
+    # Create material states. One array for each cell, where each element is an array of material-
+    # states - one for each integration point
+    nqp = getnquadpoints(cellvalues)
+    states = [[MaterialState() for _ in 1:nqp] for _ in 1:getncells(grid)]
+
+    # states = [MaterialState() for _ in 1:nqp for _ in 1:getncells(grid)]
+    # temp_states = [MaterialState() for _ in 1:nqp for _ in 1:getncells(grid)]
+
+    # Newton-Raphson loop
+    NEWTON_TOL = 1 # 1 N
+    print(&quot;\n Starting Netwon iterations:\n&quot;)
+
+    for timestep in 1:n_timesteps
+        t = timestep # actual time (used for evaluating d-bndc)
+        traction = Vec((0.0, 0.0, traction_magnitude[timestep]))
+        newton_itr = -1
+        print(&quot;\n Time step @time = $timestep:\n&quot;)
+        update!(dbcs, t) # evaluates the D-bndc at time t
+        apply!(u, dbcs)  # set the prescribed values in the solution vector
+
+        while true; newton_itr += 1
+
+            if newton_itr &gt; 8
+                error(&quot;Reached maximum Newton iterations, aborting&quot;)
+                break
+            end
+            K, r = doassemble(cellvalues, facevalues, K, grid, dh, material, u,
+                             states, traction);
+            norm_r = norm(r[JuAFEM.free_dofs(dbcs)])
+
+            print(&quot;Iteration: $newton_itr \tresidual: $(@sprintf(&quot;%.8f&quot;, norm_r))\n&quot;)
+            if norm_r &lt; NEWTON_TOL
+                break
+            end
+
+            apply_zero!(K, r, dbcs)
+            Δu = Symmetric(K) \ r
+            u -= Δu
+        end
+
+        # Update all the material states after we have reached equilibrium
+        for cell_states in states
+            foreach(update_state!, cell_states)
+        end
+        u_max[timestep] = max(abs.(u)...) # maximum displacement in current timestep
+    end
+
+    # ## Postprocessing
+    # Only a vtu-file corrsponding to the last time-step is exported.
+    #
+    # The following is a quick (and dirty) way of extracting average cell data for export.
+    mises_values = zeros(getncells(grid))
+    κ_values = zeros(getncells(grid))
+    for (el, cell_states) in enumerate(states)
+        for state in cell_states
+            mises_values[el] += vonMises(state.σ)
+            κ_values[el] += state.k*material.H
+        end
+        mises_values[el] /= length(cell_states) # average von Mises stress
+        κ_values[el] /= length(cell_states)     # average drag stress
+    end
+    vtk_grid(&quot;plasticity&quot;, dh) do vtkfile
+        vtk_point_data(vtkfile, dh, u) # displacement field
+        vtk_cell_data(vtkfile, mises_values, &quot;von Mises [Pa]&quot;)
+        vtk_cell_data(vtkfile, κ_values, &quot;Drag stress [Pa]&quot;)
+    end
+
+    return u_max, traction_magnitude
+end
+
+u_max, traction_magnitude = solve();
+
+using Plots
+plot(
+    vcat(0.0, u_max),                # add the origin as a point
+    vcat(0.0, traction_magnitude),
+    linewidth=2,
+    title=&quot;Traction-displacement&quot;,
+    label=[&quot;&quot;],
+    markershape=:auto
+    )
+ylabel!(&quot;Traction [Pa]&quot;)
+xlabel!(&quot;Maximum deflection [m]&quot;)
+
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="threaded_assembly.html">« Threaded Assembly</a><a class="docs-footer-nextpage" href="../reference/quadrature.html">Quadrature »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 19 November 2019 15:55">Tuesday 19 November 2019</span>. Using Julia version 1.2.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
