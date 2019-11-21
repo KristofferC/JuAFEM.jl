@@ -14,11 +14,11 @@ create_example_2d_grid()</code></pre><pre><code class="language-none">1-element 
     grid = generate_grid(celltype, (10*n, n, n), Vec{3}((0.0, 0.0, 0.0)), Vec{3}((10.0, 1.0, 1.0)))
     cell_colors, final_colors = JuAFEM.create_coloring(grid)
     return grid, final_colors
-end;</code></pre><pre><code class="language-none">create_colored_cantilever_grid (generic function with 1 method)</code></pre><h4 id="DofHandler-1">DofHandler<a class="docs-heading-anchor" href="#DofHandler-1" title="Permalink"></a></h4><pre><code class="language-julia">function create_dofhandler(grid::Grid{dim}) where {dim}
+end;</code></pre><h4 id="DofHandler-1">DofHandler<a class="docs-heading-anchor" href="#DofHandler-1" title="Permalink"></a></h4><pre><code class="language-julia">function create_dofhandler(grid::Grid{dim}) where {dim}
     dh = DofHandler(grid)
     push!(dh, :u, dim) # Add a displacement field
     close!(dh)
-end;</code></pre><pre><code class="language-none">create_dofhandler (generic function with 1 method)</code></pre><h3 id="Stiffness-tensor-for-linear-elasticity-1">Stiffness tensor for linear elasticity<a class="docs-heading-anchor" href="#Stiffness-tensor-for-linear-elasticity-1" title="Permalink"></a></h3><pre><code class="language-julia">function create_stiffness(::Val{dim}) where {dim}
+end;</code></pre><h3 id="Stiffness-tensor-for-linear-elasticity-1">Stiffness tensor for linear elasticity<a class="docs-heading-anchor" href="#Stiffness-tensor-for-linear-elasticity-1" title="Permalink"></a></h3><pre><code class="language-julia">function create_stiffness(::Val{dim}) where {dim}
     E = 200e9
     ν = 0.3
     λ = E*ν / ((1+ν) * (1 - 2ν))
@@ -27,7 +27,7 @@ end;</code></pre><pre><code class="language-none">create_dofhandler (generic fun
     g(i,j,k,l) = λ*δ(i,j)*δ(k,l) + μ*(δ(i,k)*δ(j,l) + δ(i,l)*δ(j,k))
     C = SymmetricTensor{4, dim}(g);
     return C
-end;</code></pre><pre><code class="language-none">create_stiffness (generic function with 1 method)</code></pre><h2 id="Threaded-data-structures-1">Threaded data structures<a class="docs-heading-anchor" href="#Threaded-data-structures-1" title="Permalink"></a></h2><p>ScratchValues is a thread-local collection of data that each thread needs to own, since we need to be able to mutate the data in the threads independently</p><pre><code class="language-julia">struct ScratchValues{T, CV &lt;: CellValues, FV &lt;: FaceValues, TT &lt;: AbstractTensor, dim, Ti}
+end;</code></pre><h2 id="Threaded-data-structures-1">Threaded data structures<a class="docs-heading-anchor" href="#Threaded-data-structures-1" title="Permalink"></a></h2><p>ScratchValues is a thread-local collection of data that each thread needs to own, since we need to be able to mutate the data in the threads independently</p><pre><code class="language-julia">struct ScratchValues{T, CV &lt;: CellValues, FV &lt;: FaceValues, TT &lt;: AbstractTensor, dim, Ti}
     Ke::Matrix{T}
     fe::Vector{T}
     cellvalues::CV
@@ -44,7 +44,7 @@ end;</code></pre><p>Each thread need its own CellValues and FaceValues (although
     cellvalues = [CellVectorValues(quadrature_rule, interpolation_space) for i in 1:Threads.nthreads()];
     facevalues = [FaceVectorValues(face_quadrature_rule, interpolation_space) for i in 1:Threads.nthreads()];
     return cellvalues, facevalues
-end;</code></pre><pre><code class="language-none">create_values (generic function with 1 method)</code></pre><p>Create a <code>ScratchValues</code> for each thread with the thread local data</p><pre><code class="language-julia">function create_scratchvalues(K, f, dh::DofHandler{dim}) where {dim}
+end;</code></pre><p>Create a <code>ScratchValues</code> for each thread with the thread local data</p><pre><code class="language-julia">function create_scratchvalues(K, f, dh::DofHandler{dim}) where {dim}
     nthreads = Threads.nthreads()
     assemblers = [start_assemble(K, f) for i in 1:nthreads]
     cellvalues, facevalues = create_values(RefCube, dim, 2)
@@ -61,7 +61,7 @@ end;</code></pre><pre><code class="language-none">create_values (generic functio
 
     return [ScratchValues(Kes[i], fes[i], cellvalues[i], facevalues[i], global_dofs[i],
                          ɛs[i], coordinates[i], assemblers[i]) for i in 1:nthreads]
-end;</code></pre><pre><code class="language-none">create_scratchvalues (generic function with 1 method)</code></pre><h2 id="Threaded-assemble-1">Threaded assemble<a class="docs-heading-anchor" href="#Threaded-assemble-1" title="Permalink"></a></h2><p>The assembly function loops over each color and does a threaded assembly for that color</p><pre><code class="language-julia">function doassemble(K::SparseMatrixCSC, colors, grid::Grid, dh::DofHandler, C::SymmetricTensor{4, dim}) where {dim}
+end;</code></pre><h2 id="Threaded-assemble-1">Threaded assemble<a class="docs-heading-anchor" href="#Threaded-assemble-1" title="Permalink"></a></h2><p>The assembly function loops over each color and does a threaded assembly for that color</p><pre><code class="language-julia">function doassemble(K::SparseMatrixCSC, colors, grid::Grid, dh::DofHandler, C::SymmetricTensor{4, dim}) where {dim}
 
     f = zeros(ndofs(dh))
     scratches = create_scratchvalues(K, f, dh)
@@ -131,7 +131,7 @@ function run_assemble()
     return b
 end
 
-run_assemble()</code></pre><pre><code class="language-none">2.136371192</code></pre><p>Running the code with different number of threads give the following runtimes:</p><ul><li>1 thread  2.46 seconds</li><li>2 threads 1.19 seconds</li><li>3 threads 0.83 seconds</li><li>4 threads 0.75 seconds</li></ul><h2 id="threaded_assembly-plain-program-1">Plain Program<a class="docs-heading-anchor" href="#threaded_assembly-plain-program-1" title="Permalink"></a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../threaded_assembly.jl">threaded_assembly.jl</a></p><pre><code class="language-julia">using JuAFEM, SparseArrays
+run_assemble()</code></pre><pre><code class="language-none">2.210739132</code></pre><p>Running the code with different number of threads give the following runtimes:</p><ul><li>1 thread  2.46 seconds</li><li>2 threads 1.19 seconds</li><li>3 threads 0.83 seconds</li><li>4 threads 0.75 seconds</li></ul><h2 id="threaded_assembly-plain-program-1">Plain Program<a class="docs-heading-anchor" href="#threaded_assembly-plain-program-1" title="Permalink"></a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../threaded_assembly.jl">threaded_assembly.jl</a></p><pre><code class="language-julia">using JuAFEM, SparseArrays
 
 function create_example_2d_grid()
     grid = generate_grid(Quadrilateral, (10, 10), Vec{2}((0.0, 0.0)), Vec{2}((10.0, 10.0)))
@@ -280,4 +280,4 @@ end
 
 run_assemble()
 
-# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../hyperelasticity/">« Hyperelasticity</a><a class="docs-footer-nextpage" href="../plasticity/">von Mises plasticity »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Wednesday 20 November 2019 22:24">Wednesday 20 November 2019</span>. Using Julia version 1.2.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../hyperelasticity/">« Hyperelasticity</a><a class="docs-footer-nextpage" href="../plasticity/">von Mises plasticity »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Thursday 21 November 2019 14:01">Thursday 21 November 2019</span>. Using Julia version 1.2.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

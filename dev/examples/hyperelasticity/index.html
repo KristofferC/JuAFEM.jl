@@ -22,7 +22,7 @@ function constitutive_driver(C, mp::NeoHooke)
     S = 2.0 * ∂Ψ∂C
     ∂S∂C = 4.0 * ∂²Ψ∂C²
     return S, ∂S∂C
-end;</code></pre><pre><code class="language-none">constitutive_driver (generic function with 1 method)</code></pre><p>Finally, for the finite element problem we need <span>$\mathbf{P}$</span> and <span>$\frac{\partial \mathbf{P}}{\partial \mathbf{F}}$</span>, which can be obtained by the following transformations</p><div>\[\begin{align*}
+end;</code></pre><p>Finally, for the finite element problem we need <span>$\mathbf{P}$</span> and <span>$\frac{\partial \mathbf{P}}{\partial \mathbf{F}}$</span>, which can be obtained by the following transformations</p><div>\[\begin{align*}
 \mathbf{P} &amp;= \mathbf{F} \cdot \mathbf{S},\\
 \frac{\partial \mathbf{P}}{\partial \mathbf{F}} &amp;= [\mathbf{F} \bar{\otimes} \mathbf{I}] :
 \frac{\partial \mathbf{S}}{\partial \mathbf{C}} : [\mathbf{F}^\mathrm{T} \bar{\otimes} \mathbf{I}]
@@ -79,7 +79,7 @@ end;</code></pre><pre><code class="language-none">constitutive_driver (generic f
             end
         end
     end
-end;</code></pre><pre><code class="language-none">assemble_element! (generic function with 1 method)</code></pre><p>Assembling global residual and tangent</p><pre><code class="language-julia">function assemble_global!(K, f, dh, cv, fv, mp, u)
+end;</code></pre><p>Assembling global residual and tangent</p><pre><code class="language-julia">function assemble_global!(K, f, dh, cv, fv, mp, u)
     n = ndofs_per_cell(dh)
     ke = zeros(n, n)
     ge = zeros(n)
@@ -94,7 +94,7 @@ end;</code></pre><pre><code class="language-none">assemble_element! (generic fun
         @timeit &quot;element assemble&quot; assemble_element!(ke, ge, cell, cv, fv, mp, ue)
         assemble!(assembler, global_dofs, ge, ke)
     end
-end;</code></pre><pre><code class="language-none">assemble_global! (generic function with 1 method)</code></pre><p>Define a main function, with a loop for Newton iterations</p><pre><code class="language-julia">function solve()
+end;</code></pre><p>Define a main function, with a loop for Newton iterations</p><pre><code class="language-julia">function solve()
     reset_timer!()
 
     # Generate a grid
@@ -191,27 +191,25 @@ end;</code></pre><pre><code class="language-none">assemble_global! (generic func
 
     print_timer(title = &quot;Analysis with $(getncells(grid)) elements&quot;, linechars = :ascii)
     return u
-end</code></pre><pre><code class="language-none">solve (generic function with 1 method)</code></pre><p>Run the simulation</p><pre><code class="language-julia">u = solve();</code></pre><pre><code class="language-none">3993-element Array{Float64,1}:
-  0.0                   
-  0.3415063509461096    
- -0.09150635094610968   
-  2.6971532448504557e-5 
-  0.2958396776436137    
- -0.12618014268650996   
-  0.0                   
-  0.3165063509461096    
- -0.04820508075688776   
-  0.0                   
-  ⋮                     
-  0.0018552809500001065 
- -0.05748898044581073   
-  0.042921092210650665  
- -0.00017103460412449563
- -0.02554728643553887   
-  0.019063507609759098  
-  0.0                   
-  0.0                   
-  0.0                   </code></pre><h2 id="Plain-Program-1">Plain Program<a class="docs-heading-anchor" href="#Plain-Program-1" title="Permalink"></a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../hyperelasticity.jl">hyperelasticity.jl</a></p><pre><code class="language-julia">using JuAFEM, Tensors, TimerOutputs, ProgressMeter
+end</code></pre><pre><code class="language-none">solve (generic function with 1 method)</code></pre><p>Run the simulation</p><pre><code class="language-julia">u = solve();</code></pre><pre><code class="language-none">Solving: (thresh = 1e-08, value = 0.013799)[K
+  iter:  2[A
+[K[ASolving: (thresh = 1e-08, value = 1.92988e-07)[K
+  iter:  4[A
+[K[ASolving: Time: 0:00:00 (6 iterations)[K
+  iter:  5
+ ------------------------------------------------------------------------------
+  Analysis with 6000 elements          Time                   Allocations
+                               ----------------------   -----------------------
+       Tot / % measured:            666ms / 58.9%           81.6MiB / 16.1%
+
+ Section               ncalls     time   %tot     avg     alloc   %tot      avg
+ ------------------------------------------------------------------------------
+ assemble                   6    155ms  39.5%  25.8ms   8.25MiB  63.0%  1.37MiB
+   element assemble     36.0k    107ms  27.4%  2.99μs     0.00B  0.00%    0.00B
+ linear solve (Iter...      5    147ms  37.4%  29.3ms    474KiB  3.53%  94.8KiB
+ export                     1   50.8ms  13.0%  50.8ms   3.73MiB  28.5%  3.73MiB
+ linear solve (Kryl...      5   39.7ms  10.1%  7.93ms    669KiB  4.99%   134KiB
+ ------------------------------------------------------------------------------</code></pre><h2 id="Plain-Program-1">Plain Program<a class="docs-heading-anchor" href="#Plain-Program-1" title="Permalink"></a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../hyperelasticity.jl">hyperelasticity.jl</a></p><pre><code class="language-julia">using JuAFEM, Tensors, TimerOutputs, ProgressMeter
 import KrylovMethods, IterativeSolvers
 
 struct NeoHooke
@@ -407,4 +405,4 @@ end
 
 u = solve();
 
-# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../incompressible_elasticity/">« Incompressible Elasticity</a><a class="docs-footer-nextpage" href="../threaded_assembly/">Threaded Assembly »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Wednesday 20 November 2019 22:24">Wednesday 20 November 2019</span>. Using Julia version 1.2.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../incompressible_elasticity/">« Incompressible Elasticity</a><a class="docs-footer-nextpage" href="../threaded_assembly/">Threaded Assembly »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Thursday 21 November 2019 14:01">Thursday 21 November 2019</span>. Using Julia version 1.2.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
