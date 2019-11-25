@@ -32,6 +32,7 @@ function u_ana(x::Vec{2, T}) where {T}
 end;
 
 dbcs = ConstraintHandler(dh)
+
 dbc = Dirichlet(:u, union(getfaceset(grid, "top"), getfaceset(grid, "right")), (x,t) -> u_ana(x))
 add!(dbcs, dbc)
 close!(dbcs)
