@@ -200,15 +200,15 @@ end</code></pre><pre><code class="language-none">solve (generic function with 1 
  ------------------------------------------------------------------------------
   Analysis with 6000 elements          Time                   Allocations
                                ----------------------   -----------------------
-       Tot / % measured:            652ms / 60.4%           81.6MiB / 16.1%
+       Tot / % measured:            533ms / 61.9%           81.6MiB / 16.1%
 
  Section               ncalls     time   %tot     avg     alloc   %tot      avg
  ------------------------------------------------------------------------------
- assemble                   6    159ms  40.3%  26.4ms   8.25MiB  63.0%  1.37MiB
-   element assemble     36.0k    106ms  26.8%  2.93μs     0.00B  0.00%    0.00B
- linear solve (Iter...      5    143ms  36.3%  28.6ms    474KiB  3.53%  94.8KiB
- export                     1   52.8ms  13.4%  52.8ms   3.73MiB  28.5%  3.73MiB
- linear solve (Kryl...      5   39.2ms  10.0%  7.84ms    669KiB  4.99%   134KiB
+ assemble                   6    129ms  39.2%  21.6ms   8.25MiB  63.0%  1.37MiB
+   element assemble     36.0k   87.3ms  26.5%  2.43μs     0.00B  0.00%    0.00B
+ linear solve (Iter...      5    125ms  37.9%  25.0ms    474KiB  3.53%  94.8KiB
+ export                     1   43.6ms  13.2%  43.6ms   3.73MiB  28.5%  3.73MiB
+ linear solve (Kryl...      5   31.9ms  9.67%  6.38ms    669KiB  4.99%   134KiB
  ------------------------------------------------------------------------------</code></pre><h2 id="Plain-Program-1"><a class="docs-heading-anchor" href="#Plain-Program-1">Plain Program</a><a class="docs-heading-anchor-permalink" href="#Plain-Program-1" title="Permalink"></a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../hyperelasticity.jl">hyperelasticity.jl</a></p><pre><code class="language-julia">using JuAFEM, Tensors, TimerOutputs, ProgressMeter
 import KrylovMethods, IterativeSolvers
 
@@ -405,4 +405,4 @@ end
 
 u = solve();
 
-# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../incompressible_elasticity/">« Incompressible Elasticity</a><a class="docs-footer-nextpage" href="../threaded_assembly/">Threaded Assembly »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 3 December 2019 15:15">Tuesday 3 December 2019</span>. Using Julia version 1.2.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../incompressible_elasticity/">« Incompressible Elasticity</a><a class="docs-footer-nextpage" href="../threaded_assembly/">Threaded Assembly »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Wednesday 29 January 2020 14:43">Wednesday 29 January 2020</span>. Using Julia version 1.2.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
