@@ -21,11 +21,11 @@ facevalues = FaceScalarValues(qr_face, ip);
 
 dh = DofHandler(grid)
 push!(dh, :u, 1)
-close!(dh)</code></pre><pre><code class="language-none">DofHandler
+close!(dh)</code></pre><pre class="documenter-example-output">DofHandler
   Fields:
     :u, interpolation: Lagrange{2,RefCube,1}(), dim: 1
   Dofs per cell: 4
-  Total dofs: 22801</code></pre><p>We will set things up, so that a known analytic solution is approximately reproduced. This is a good testing strategy for PDE codes and known as the method of manufactured solutions.</p><pre><code class="language-julia">function u_ana(x::Vec{2, T}) where {T}
+  Total dofs: 22801</pre><p>We will set things up, so that a known analytic solution is approximately reproduced. This is a good testing strategy for PDE codes and known as the method of manufactured solutions.</p><pre><code class="language-julia">function u_ana(x::Vec{2, T}) where {T}
     xs = (Vec{2}((-0.5,  0.5)),
           Vec{2}((-0.5, -0.5)),
           Vec{2}(( 0.5,  -0.5)))
@@ -37,8 +37,8 @@ close!(dh)</code></pre><pre><code class="language-none">DofHandler
     return max(1e-15 * one(T), s) # Denormals, be gone
 end;
 
-dbcs = ConstraintHandler(dh)</code></pre><pre><code class="language-none">ConstraintHandler:
-  Not closed!</code></pre><p>The (strong) Dirichlet boundary condition can be handled automatically by the JuAFEM library.</p><pre><code class="language-julia">dbc = Dirichlet(:u, union(getfaceset(grid, &quot;top&quot;), getfaceset(grid, &quot;right&quot;)), (x,t) -&gt; u_ana(x))
+dbcs = ConstraintHandler(dh)</code></pre><pre class="documenter-example-output">ConstraintHandler:
+  Not closed!</pre><p>The (strong) Dirichlet boundary condition can be handled automatically by the JuAFEM library.</p><pre><code class="language-julia">dbc = Dirichlet(:u, union(getfaceset(grid, &quot;top&quot;), getfaceset(grid, &quot;right&quot;)), (x,t) -&gt; u_ana(x))
 add!(dbcs, dbc)
 close!(dbcs)
 update!(dbcs, 0.0)
@@ -113,4 +113,4 @@ u = Symmetric(K) \ f;
 vtkfile = vtk_grid(&quot;helmholtz&quot;, dh)
 vtk_point_data(vtkfile, dh, u)
 vtk_save(vtkfile)
-println(&quot;Helmholtz successful&quot;)</code></pre><pre><code class="language-none">Helmholtz successful</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../l2_projection/">« L2-projection</a><a class="docs-footer-nextpage" href="../incompressible_elasticity/">Incompressible Elasticity »</a></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Saturday 23 May 2020 09:46">Saturday 23 May 2020</span>. Using Julia version 1.3.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+println(&quot;Helmholtz successful&quot;)</code></pre><pre class="documenter-example-output">Helmholtz successful</pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../l2_projection/">« L2-projection</a><a class="docs-footer-nextpage" href="../incompressible_elasticity/">Incompressible Elasticity »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Thursday 15 October 2020 13:09">Thursday 15 October 2020</span>. Using Julia version 1.5.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
