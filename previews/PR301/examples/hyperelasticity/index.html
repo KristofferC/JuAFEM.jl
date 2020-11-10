@@ -201,20 +201,20 @@ end</code></pre><pre class="documenter-example-output">solve (generic function w
   iter:  3[K[A
 [K[ASolving: (thresh = 1e-08, value = 1.92988e-07)[K
   iter:  4[K[A
-[K[ASolving: Time: 0:00:28 (6 iterations)[K
+[K[ASolving: Time: 0:00:27 (6 iterations)[K
   iter:  5[K
  ------------------------------------------------------------------------------
   Analysis with 6000 elements          Time                   Allocations
                                ----------------------   -----------------------
-       Tot / % measured:            29.1s / 99.1%           11.3GiB / 99.4%
+       Tot / % measured:            28.3s / 99.0%           11.3GiB / 99.4%
 
  Section               ncalls     time   %tot     avg     alloc   %tot      avg
  ------------------------------------------------------------------------------
- assemble                   6    28.6s  99.2%   4.76s   11.2GiB  100%   1.87GiB
-   element assemble     36.0k    28.5s  98.8%   791μs   11.2GiB  100%    326KiB
- linear solve (Iter...      5    147ms  0.51%  29.4ms    474KiB  0.00%  94.8KiB
- export                     1   50.6ms  0.18%  50.6ms   4.41MiB  0.04%  4.41MiB
- linear solve (Kryl...      5   41.4ms  0.14%  8.27ms    669KiB  0.01%   134KiB
+ assemble                   6    27.8s  99.3%   4.63s   11.2GiB  100%   1.87GiB
+   element assemble     36.0k    27.7s  99.0%   770μs   11.2GiB  100%    326KiB
+ linear solve (Iter...      5    138ms  0.49%  27.5ms    474KiB  0.00%  94.8KiB
+ linear solve (Kryl...      5   37.7ms  0.13%  7.53ms    669KiB  0.01%   134KiB
+ export                     1   33.4ms  0.12%  33.4ms   4.41MiB  0.04%  4.41MiB
  ------------------------------------------------------------------------------</pre><h2 id="Plain-Program"><a class="docs-heading-anchor" href="#Plain-Program">Plain Program</a><a id="Plain-Program-1"></a><a class="docs-heading-anchor-permalink" href="#Plain-Program" title="Permalink"></a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../hyperelasticity.jl">hyperelasticity.jl</a></p><pre><code class="language-julia">using JuAFEM, Tensors, TimerOutputs, ProgressMeter
 import KrylovMethods, IterativeSolvers
 
@@ -411,4 +411,4 @@ end
 
 u = solve();
 
-# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../incompressible_elasticity/">« Incompressible Elasticity</a><a class="docs-footer-nextpage" href="../threaded_assembly/">Threaded Assembly »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 10 November 2020 10:13">Tuesday 10 November 2020</span>. Using Julia version 1.5.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../incompressible_elasticity/">« Incompressible Elasticity</a><a class="docs-footer-nextpage" href="../threaded_assembly/">Threaded Assembly »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 10 November 2020 10:14">Tuesday 10 November 2020</span>. Using Julia version 1.5.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
