@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Bidomain and DifferentialEquations.jl · JuAFEM.jl</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">JuAFEM.jl</span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../manual/fe_intro/">Introduction to FEM</a></li><li><span class="tocitem">Manual</span><ul><li><a class="tocitem" href="../../manual/degrees_of_freedom/">Degrees of Freedom</a></li><li><a class="tocitem" href="../../manual/assembly/">Assembly</a></li><li><a class="tocitem" href="../../manual/boundary_conditions/">Boundary Conditions</a></li><li><a class="tocitem" href="../../manual/grid/">Grid</a></li><li><a class="tocitem" href="../../manual/export/">Export</a></li></ul></li><li><span class="tocitem">Examples</span><ul><li><a class="tocitem" href="../heat_equation/">Heat Equation</a></li><li><a class="tocitem" href="../l2_projection/">L2-projection</a></li><li><a class="tocitem" href="../helmholtz/">Helmholtz equation</a></li><li><a class="tocitem" href="../incompressible_elasticity/">Incompressible Elasticity</a></li><li><a class="tocitem" href="../hyperelasticity/">Hyperelasticity</a></li><li><a class="tocitem" href="../threaded_assembly/">Threaded Assembly</a></li><li><a class="tocitem" href="../plasticity/">von Mises plasticity</a></li><li><a class="tocitem" href="../transient_heat_equation/">Time Dependent Problems</a></li><li class="is-active"><a class="tocitem" href>Bidomain and DifferentialEquations.jl</a><ul class="internal"><li><a class="tocitem" href="#Introduction"><span>Introduction</span></a></li><li><a class="tocitem" href="#Commented-Program"><span>Commented Program</span></a></li><li><a class="tocitem" href="#bidomain-plain-program"><span>Plain Program</span></a></li></ul></li></ul></li><li><span class="tocitem">API Reference</span><ul><li><a class="tocitem" href="../../reference/quadrature/">Quadrature</a></li><li><a class="tocitem" href="../../reference/interpolations/">Interpolation</a></li><li><a class="tocitem" href="../../reference/fevalues/">FEValues</a></li><li><a class="tocitem" href="../../reference/dofhandler/">DofHandler</a></li><li><a class="tocitem" href="../../reference/assembly/">Assembly</a></li><li><a class="tocitem" href="../../reference/boundary_conditions/">Boundary Conditions</a></li><li><a class="tocitem" href="../../reference/grid/">Grid</a></li><li><a class="tocitem" href="../../reference/export/">Export</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Bidomain and DifferentialEquations.jl</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Bidomain and DifferentialEquations.jl</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/KristofferC/JuAFEM.jl/blob/master/docs/src/literate/bidomain.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Bidomain-and-DifferentialEquations.jl"><a class="docs-heading-anchor" href="#Bidomain-and-DifferentialEquations.jl">Bidomain and DifferentialEquations.jl</a><a id="Bidomain-and-DifferentialEquations.jl-1"></a><a class="docs-heading-anchor-permalink" href="#Bidomain-and-DifferentialEquations.jl" title="Permalink"></a></h1><p><img src="../bidomain.gif" alt/></p><div class="admonition is-success"><header class="admonition-header">Tip</header><div class="admonition-body"><p>This example is also available as a Jupyter notebook: <a href="https://nbviewer.jupyter.org/github/KristofferC/JuAFEM.jl/blob/gh-pages/previews/PR325/examples/bidomain.ipynb"><code>bidomain.ipynb</code></a></p></div></div><h2 id="Introduction"><a class="docs-heading-anchor" href="#Introduction">Introduction</a><a id="Introduction-1"></a><a class="docs-heading-anchor-permalink" href="#Introduction" title="Permalink"></a></h2><p>In this example we will implement the <a href="https://en.wikipedia.org/wiki/Bidomain_model">Bidomain Model</a> with the help of <a href="https://github.com/SciML/DifferentialEquations.jl">DifferentialEquations.jl</a>. This model is used to simulate the excitable media, most commonly cardiac tissue. For more information about the derivation, check out the linked wikipedia article.</p><p>The Bidomain model in parabolic-elliptic form is given as the following system</p><p class="math-container">\[\begin{aligned}
+	\chi C_{\textrm{m}} \frac{\partial \varphi_{\textrm{m}}}{\partial t} &amp;= \nabla \cdot (\bm{\kappa}_{\textrm{i}} \nabla \varphi_{\textrm{m}}) + \nabla \cdot (\bm{\kappa}_{\textrm{i}} \nabla \varphi_{\textrm{e}}) - \chi I_{\textrm{ion}}(\varphi_{\textrm{m}}, \mathbf{s}) &amp; \textrm{on} \: \Omega \times (0,T] \\
+	0 &amp;= \nabla \cdot (\bm{\kappa}_{\textrm{i}} \nabla \varphi_{\textrm{m}}) + \nabla \cdot (\bm{\kappa}_e + \bm{\kappa}_{\textrm{i}}) \nabla \varphi_{\textrm{e}} &amp; \textrm{on} \: \Omega \times (0,T] \\
+	\frac{\partial \mathbf{s}}{\partial t} &amp;= \mathbf{g}(\varphi_{\textrm{m}}, \mathbf{s}) &amp; \textrm{on} \: \Omega \times (0,T]
+\end{aligned}\]</p><p>For the scope of this example we utilize the FitzHugh-Nagumo neuronal cell cell model, given by</p><p class="math-container">\[\begin{aligned}
+	I_{\textrm{ion}}(\varphi_{\textrm{m}}, \mathbf{s}) &amp;= - \varphi_{\textrm{m}}(1 - \varphi_{\textrm{m}})(\varphi_{\textrm{m}} - a) + s \\
+	g(\varphi_{\textrm{m}}, \mathbf{s}) &amp;= e(b\varphi_{\textrm{m}} - c s - d)
+\end{aligned}\]</p><p>with parameters and initial conditions as stated in: Alfonso Bueno-Orovio, David Kay, and Kevin Burrage. &quot;Fourier spectral methods for fractional-in-space reaction-diffusion equations.&quot; BIT Numerical mathematics 54.4 (2014): 937-954.</p><p>To utilize <a href="https://github.com/SciML/DifferentialEquations.jl">DifferentialEquations.jl</a> we first have to discretize the system with JuAFEM into a system of ordinary differential equations (ODEs) in mass matrix form. Therefore we have first to transform it into a weak form</p><p class="math-container">\[\begin{aligned}
+	\int_\Omega \chi  C_{\textrm{m}} \frac{\partial \varphi_{\textrm{m}}}{\partial t} v_1 \textrm{d}\Omega &amp;= -\int_\Omega (\bm{\kappa}_{\textrm{i}} \nabla \varphi_{\textrm{m}} + \bm{\kappa}_{\textrm{i}} \nabla \varphi_{\textrm{e}}) \cdot \nabla v_1 \textrm{d}\Omega + \int_\Omega \chi (\varphi_{\textrm{m}}(1 - \varphi_{\textrm{m}})(\varphi_{\textrm{m}} - a) - s) v_1 \textrm{d}\Omega \\
+	0 &amp;= -\int_\Omega (\bm{\kappa}_{\textrm{i}} \nabla \varphi_{\textrm{m}} + (\bm{\kappa}_e + \bm{\kappa}_{\textrm{i}}) \nabla \varphi_{\textrm{e}}) \cdot \nabla v_2 \textrm{d}\Omega \\
+	\int_\Omega \frac{\partial s}{\partial t} v_3 \textrm{d}\Omega &amp;= \int_\Omega e(b\varphi_{\textrm{m}} - c s - d) v_3 \textrm{d}\Omega
+\end{aligned}\]</p><p>where we assume no flux boundary condition for <span>$\varphi_{\textrm{m}}, \varphi_{\textrm{e}}$</span>, except in one point. This models a grounding through a Dirichlet condition of zero in this point.</p><p>Please note that technically speaking we obtain a <a href="https://en.wikipedia.org/wiki/Differential-algebraic_system_of_equations">differential-algebraic system of equations</a> (DAE), so note that we cannot apply all ODE solvers to the resulting system. However, <a href="https://github.com/SciML/DifferentialEquations.jl">DifferentialEquations.jl</a> expects for some solvers to state the DAE as an ODE in mass matrix form and because this form arises naturally in finite element methods for many common problems, let us stick with it. In this example the required Jacobians for the ODE solver are computed via automatic differentiation, but in optimized implementations they can also be manually provided.</p><p>Discretizing the provided weak form yields a semi-linear system of ODEs in mass matrix form:</p><p class="math-container">\[\mathcal{M}
+\begin{bmatrix}
+  \frac{\partial\tilde{\varphi}_\textrm{m}}{\partial t} \\
+  \frac{\partial\tilde{\varphi}_\textrm{e}}{\partial t} \\
+  \frac{\partial \tilde{s}}{\partial t}
+\end{bmatrix}
+=
+\mathcal{L}
+\begin{bmatrix}
+  \tilde{\varphi}_\textrm{m} \\
+  \tilde{\varphi}_\textrm{e} \\
+  \tilde{s}
+\end{bmatrix}
++
+\mathcal{N}(
+  \tilde{\varphi}_\textrm{m},
+  \tilde{\varphi}_\textrm{e},
+  \tilde{s})\]</p><h2 id="Commented-Program"><a class="docs-heading-anchor" href="#Commented-Program">Commented Program</a><a id="Commented-Program-1"></a><a class="docs-heading-anchor-permalink" href="#Commented-Program" title="Permalink"></a></h2><pre><code class="language-julia">using JuAFEM, SparseArrays, BlockArrays</code></pre><p>Instead of using a self written time integrator, we will use in this example a time integrator of <a href="https://github.com/SciML/DifferentialEquations.jl">DifferentialEquations.jl</a> <a href="https://github.com/SciML/DifferentialEquations.jl">DifferentialEquations.jl</a> is a powerful package, from which we will use adaptive time stepping. Besides this, almost any ODE solver you can imagine is available. In order to use it, we first need to <code>import</code> it.</p><pre><code class="language-julia">import DifferentialEquations</code></pre><p>Now, we define the computational domain and cellvalues. We exploit the fact that all fields of the Bidomain model are approximated with the same Ansatz. Hence, we use one CellScalarValues struct for all three fields.</p><pre><code class="language-julia">grid = generate_grid(Quadrilateral, (60, 60), Vec{2}((0.0,0.0)), Vec{2}((2.5,2.5)))
+addnodeset!(grid, &quot;ground&quot;, x-&gt; x[2] == -0 &amp;&amp; x[1] == -0)
+dim = 2
+Δt = 0.1
+T = 1000
+ip = Lagrange{dim, RefCube, 1}()
+qr = QuadratureRule{dim, RefCube}(2)
+cellvalues = CellScalarValues(qr, ip);</code></pre><p>We need to intialize a DofHandler. The DofHandler needs to be aware of three different fields which are all first order approximations. After pushing all fields into the DofHandler, we <code>close</code> it and thereby distribute the dofs of the problem.</p><pre><code class="language-julia">dh = DofHandler(grid)
+push!(dh, :ϕₘ, 1)
+push!(dh, :ϕₑ, 1)
+push!(dh, :s, 1)
+close!(dh);</code></pre><p>The linear parts of the Bidomain equations contribute to the stiffness and mass matrix, respectively. So, we create a sparsity pattern for those terms.</p><pre><code class="language-julia">K = create_sparsity_pattern(dh)
+M = create_sparsity_pattern(dh);</code></pre><p>Material related parameters are stored in the struct <code>FHNParameters</code></p><pre><code class="language-julia">Base.@kwdef struct FHNParameters
+    a::Float64 = 0.1
+    b::Float64 = 0.5
+    c::Float64 = 1.0
+    d::Float64 = 0.0
+    e::Float64 = 0.01
+end;</code></pre><p>Within the equations of the model, spatial dependent parameters occur such as κₑ, κᵢ, Cₘ and χ. For the sake of simplicity we kept them constant. Nonetheless, we show how one can model spatial dependent coefficients. Hence, the unused function argument <code>x</code></p><pre><code class="language-julia">function κₑ(x)
+    return SymmetricTensor{2,2,Float64}((3.5e-5, 0, 2.5e-5))
+end;
+
+function κᵢ(x)
+    return SymmetricTensor{2,2,Float64}((4.5e-5, 0, 2.0e-6))
+end;
+
+function Cₘ(x)
+    return 1.0
+end;
+
+function χ(x)
+    return 1.0
+end;</code></pre><p>Boundary conditions are added to the problem in the usual way. Please check out the other examples for an in depth explanation. Here we force the extracellular porential to be zero at the boundary.</p><pre><code class="language-julia">ch = ConstraintHandler(dh)
+∂Ω = getnodeset(grid, &quot;ground&quot;)
+dbc = Dirichlet(:ϕₑ, ∂Ω, (x, t) -&gt; 0)
+add!(ch, dbc)
+close!(ch)
+update!(ch, 0.0);</code></pre><p>We first write a helper to assemble the linear parts. Note that we can precompute and cache linear parts. In the used notation subscripts indicate dependent coefficients.</p><p class="math-container">\[\mathcal{M}
+=
+\begin{bmatrix}
+  M_{\chi C_\textrm{m}} &amp; 0 &amp; 0 \\
+  0 &amp; 0 &amp; 0 \\
+  0 &amp; 0 &amp; M
+\end{bmatrix}
+\qquad
+\mathcal{L}
+=
+\begin{bmatrix}
+  -M_{a\chi}-K_{\bm{\kappa}_{\textrm{i}}} &amp; -K_{\bm{\kappa}_{\textrm{i}}} &amp; -M_{\chi} \\
+  -K_{\bm{\kappa}_{\textrm{i}}} &amp; -K_{\bm{\kappa}_{\textrm{i}}+\bm{\kappa}_{\textrm{e}}} &amp; 0 \\
+  M_{be} &amp; 0 &amp; -M_{bc}
+\end{bmatrix}\]</p><p>In the following function, <code>doassemble_linear!</code>, we assemble all linear parts of the system that stay same over all time steps. This follows from the used Method of Lines, where we first discretize in space and afterwards in time.</p><pre><code class="language-julia">function doassemble_linear!(cellvalues::CellScalarValues{dim}, K::SparseMatrixCSC, M::SparseMatrixCSC, dh::DofHandler; params::FHNParameters = FHNParameters()) where {dim}
+    n_ϕₘ = getnbasefunctions(cellvalues)
+    n_ϕₑ = getnbasefunctions(cellvalues)
+    n_s = getnbasefunctions(cellvalues)
+    ntotal = n_ϕₘ + n_ϕₑ + n_s
+    n_basefuncs = getnbasefunctions(cellvalues)
+    #We use PseudoBlockArrays to write into the right places of Ke
+    Ke = PseudoBlockArray(zeros(ntotal, ntotal), [n_ϕₘ, n_ϕₑ, n_s], [n_ϕₘ, n_ϕₑ, n_s])
+    Me = PseudoBlockArray(zeros(ntotal, ntotal), [n_ϕₘ, n_ϕₑ, n_s], [n_ϕₘ, n_ϕₑ, n_s])
+
+    assembler_K = start_assemble(K)
+    assembler_M = start_assemble(M)
+
+    #Here the block indices of the variables are defined.
+    ϕₘ▄, ϕₑ▄, s▄ = 1, 2, 3
+
+    #Now we iterate over all cells of the grid
+    @inbounds for cell in CellIterator(dh)
+        fill!(Ke, 0)
+        fill!(Me, 0)
+        #get the coordinates of the current cell
+        coords = getcoordinates(cell)
+
+        JuAFEM.reinit!(cellvalues, cell)
+        #loop over all Gauss points
+        for q_point in 1:getnquadpoints(cellvalues)
+            #get the spatial coordinates of the current gauss point
+            coords_qp = spatial_coordinate(cellvalues, q_point, coords)
+            #based on the gauss point coordinates, we get the spatial dependent
+            #material parameters
+            κₑ_loc = κₑ(coords_qp)
+            κᵢ_loc = κᵢ(coords_qp)
+            Cₘ_loc = Cₘ(coords_qp)
+            χ_loc = χ(coords_qp)
+            dΩ = getdetJdV(cellvalues, q_point)
+            for i in 1:n_basefuncs
+                Nᵢ = shape_value(cellvalues, q_point, i)
+                ∇Nᵢ = shape_gradient(cellvalues, q_point, i)
+                for j in 1:n_basefuncs
+                    Nⱼ = shape_value(cellvalues, q_point, j)
+                    ∇Nⱼ = shape_gradient(cellvalues, q_point, j)
+                    #diffusion parts
+                    Ke[BlockIndex((ϕₘ▄,ϕₘ▄),(i,j))] -= ((κᵢ_loc ⋅ ∇Nᵢ) ⋅ ∇Nⱼ) * dΩ
+                    Ke[BlockIndex((ϕₘ▄,ϕₑ▄),(i,j))] -= ((κᵢ_loc ⋅ ∇Nᵢ) ⋅ ∇Nⱼ) * dΩ
+                    Ke[BlockIndex((ϕₑ▄,ϕₘ▄),(i,j))] -= ((κᵢ_loc ⋅ ∇Nᵢ) ⋅ ∇Nⱼ) * dΩ
+                    Ke[BlockIndex((ϕₑ▄,ϕₑ▄),(i,j))] -= (((κₑ_loc + κᵢ_loc) ⋅ ∇Nᵢ) ⋅ ∇Nⱼ) * dΩ
+                    #linear reaction parts
+                    Ke[BlockIndex((ϕₘ▄,ϕₘ▄),(i,j))] -= params.a * Nᵢ * Nⱼ * dΩ
+                    Ke[BlockIndex((ϕₘ▄,s▄),(i,j))]  -= Nᵢ * Nⱼ * dΩ
+                    Ke[BlockIndex((s▄,ϕₘ▄),(i,j))]  += params.e * params.b * Nᵢ * Nⱼ * dΩ
+                    Ke[BlockIndex((s▄,s▄),(i,j))]   -= params.e * params.c * Nᵢ * Nⱼ * dΩ
+                    #mass matrices
+                    Me[BlockIndex((ϕₘ▄,ϕₘ▄),(i,j))] += Cₘ_loc * χ_loc * Nᵢ * Nⱼ * dΩ
+                    Me[BlockIndex((s▄,s▄),(i,j))]   += Nᵢ * Nⱼ * dΩ
+                end
+            end
+        end
+
+        assemble!(assembler_K, celldofs(cell), Ke)
+        assemble!(assembler_M, celldofs(cell), Me)
+    end
+    return K, M
+end;</code></pre><p>Regarding the non-linear parts, while the affine term could be cached, for the sake of simplicity we simply recompute it in each call to the right hand side of the system.</p><p class="math-container">\[\mathcal{N}(
+  \tilde{\varphi}_\textrm{m},
+  \tilde{\varphi}_\textrm{e},
+  \tilde{s})
+=
+\begin{bmatrix}
+  -(\int_\Omega \chi ((\sum_i -\tilde{\varphi}_{m,i} u_{1,i})^3 + \tilde{\varphi}_{m,i} (1+a) u_{1,i})^2)v_{1,j} \textrm{d}\Omega)_j \\
+  0 \\
+  (\int_\Omega de v_{3,j} \textrm{d}\Omega)_j
+\end{bmatrix}\]</p><p>It is important to note, that we have to sneak in the boundary conditions into the evaluation of the non-linear term.</p><p>TODO cleanup The function <code>apply_nonlinear!</code> describes the nonlinear change of the system. It takes the change vector <code>du</code>, the current available solution <code>u</code>, the generic storage vector <code>p</code> and the current time <code>t</code>. The storage vector will be used to pass the <code>dh::DofHandler</code>, <code>ch::ConstraintHandler</code>, stiffness matrix <code>K</code> and constant material parameters <code>FHNParameters()</code></p><pre><code class="language-julia">function apply_nonlinear!(du, u, p, t)
+    dh = p[2]
+    ch = p[3]
+    params = p[4]
+    ip = p[5]
+    qr = p[6]
+    cellvalues = p[7]
+    n_basefuncs = getnquadpoints(cellvalues)
+
+    for cell in CellIterator(dh)
+        JuAFEM.reinit!(cellvalues, cell)
+        _celldofs = celldofs(cell)
+        ϕₘ_celldofs = _celldofs[dof_range(dh, :ϕₘ)]
+        s_celldofs = _celldofs[dof_range(dh, :s)]
+        ϕₘe = u[ϕₘ_celldofs]
+        se = u[s_celldofs]
+        coords = getcoordinates(cell)
+        for q_point in 1:getnquadpoints(cellvalues)
+            x_qp = spatial_coordinate(cellvalues, q_point, coords)
+            χ_loc = χ(x_qp)
+            dΩ = getdetJdV(cellvalues, q_point)
+            val = function_value(cellvalues, q_point, ϕₘe)
+            nl_contrib = - val^3 + (1+params.a)*val^2
+            for j in 1:n_basefuncs
+                Nⱼ = shape_value(cellvalues, q_point, j)
+                du[ϕₘ_celldofs[j]] += χ_loc * nl_contrib * Nⱼ * dΩ
+                du[s_celldofs[j]]  -= params.e * params.d * Nⱼ * dΩ
+            end
+        end
+    end
+    apply_zero!(du, ch)
+end;</code></pre><p>We assemble the linear parts into <code>K</code> and <code>M</code>, respectively.</p><pre><code class="language-julia">K, M = doassemble_linear!(cellvalues, K, M, dh);</code></pre><p>Now we apply <em>once</em> the boundary conditions to these parts.</p><pre><code class="language-julia">apply!(K, ch)
+apply!(M, ch);</code></pre><p>In the function <code>bidomain!</code> we model the actual time dependent DAE problem. This function takes the same parameters as <code>apply_nonlinear!</code>, which is essentially the defined interface by <a href="https://github.com/SciML/DifferentialEquations.jl">DifferentialEquations.jl</a></p><pre><code class="language-julia">function bidomain!(du,u,p,t)
+    du .= K * u
+    apply_nonlinear!(du, u, p, t)
+end;</code></pre><p>In the following code block we define the initial condition of the problem. We first initialize a zero vector of length <code>ndofs(dh)</code> and fill it afterwards in a for loop over all cells.</p><pre><code class="language-julia">u₀ = zeros(ndofs(dh));
+for cell in CellIterator(dh)
+    _celldofs = celldofs(cell)
+    ϕₘ_celldofs = _celldofs[dof_range(dh, :ϕₘ)]
+    s_celldofs = _celldofs[dof_range(dh, :s)]
+    for (i, coordinate) in enumerate(getcoordinates(cell))
+        if coordinate[2] &gt;= 1.25
+            u₀[s_celldofs[i]] = 0.1
+        end
+        if coordinate[1] &lt;= 1.25 &amp;&amp; coordinate[2] &lt;= 1.25
+            u₀[ϕₘ_celldofs[i]] = 1.0
+        end
+    end
+end</code></pre><p>We can now state and solve the <code>ODEProblem</code>. Since the jacobian of our problem is large and sparse it is advantageous to avoid building a dense matrix (with dense solver) where possible. In <a href="https://github.com/SciML/DifferentialEquations.jl">DifferentialEquations.jl</a> we can enforce using sparse jacobian matrices by providing a prototype jacobian with proper sparsity pattern, see <a href="https://diffeq.sciml.ai/stable/tutorials/advanced_ode_example/#Speeding-Up-Jacobian-Calculations">here</a> for details. In our problem it turns out that the K captures this pattern sufficiently, so for the sake if simplicity we simply use it in this example.</p><pre><code class="language-julia">jac_sparsity = sparse(K)
+
+f = DifferentialEquations.ODEFunction(bidomain!,mass_matrix=M;jac_prototype=jac_sparsity)
+p = [K, dh, ch, FHNParameters(), ip, qr, cellvalues]
+prob_mm = DifferentialEquations.ODEProblem(f,u₀,(0.0,T),p)
+
+sol = DifferentialEquations.solve(prob_mm,DifferentialEquations.QNDF(),reltol=1e-3,abstol=1e-4, progress=true, progress_steps = 1, adaptive=true, dt=Δt);</code></pre><p>We instantiate a paraview collection file.</p><pre><code class="language-julia">pvd = paraview_collection(&quot;bidomain.pvd&quot;);</code></pre><p>Now, we loop over all timesteps and solution vectors, in order to append them to the paraview collection.</p><pre><code class="language-julia">for (solution,t) in zip(sol.u, sol.t)
+    #compress=false flag because otherwise each vtk file will be stored in memory
+    vtk_grid(&quot;bidomain-$t.vtu&quot;, dh; compress=false) do vtk
+        vtk_point_data(vtk,dh,solution)
+        vtk_save(vtk)
+        pvd[t] = vtk
+    end
+end</code></pre><p>Finally, we save the paraview collection.</p><pre><code class="language-julia">vtk_save(pvd);</code></pre><h2 id="bidomain-plain-program"><a class="docs-heading-anchor" href="#bidomain-plain-program">Plain Program</a><a id="bidomain-plain-program-1"></a><a class="docs-heading-anchor-permalink" href="#bidomain-plain-program" title="Permalink"></a></h2><p>Below follows a version of the program without any comments. The file is also available here: <a href="../bidomain.jl">bidomain.jl</a></p><pre><code class="language-julia">using JuAFEM, SparseArrays, BlockArrays
+
+import DifferentialEquations
+
+grid = generate_grid(Quadrilateral, (60, 60), Vec{2}((0.0,0.0)), Vec{2}((2.5,2.5)))
+addnodeset!(grid, &quot;ground&quot;, x-&gt; x[2] == -0 &amp;&amp; x[1] == -0)
+dim = 2
+Δt = 0.1
+T = 1000
+ip = Lagrange{dim, RefCube, 1}()
+qr = QuadratureRule{dim, RefCube}(2)
+cellvalues = CellScalarValues(qr, ip);
+
+dh = DofHandler(grid)
+push!(dh, :ϕₘ, 1)
+push!(dh, :ϕₑ, 1)
+push!(dh, :s, 1)
+close!(dh);
+
+K = create_sparsity_pattern(dh)
+M = create_sparsity_pattern(dh);
+
+Base.@kwdef struct FHNParameters
+    a::Float64 = 0.1
+    b::Float64 = 0.5
+    c::Float64 = 1.0
+    d::Float64 = 0.0
+    e::Float64 = 0.01
+end;
+
+function κₑ(x)
+    return SymmetricTensor{2,2,Float64}((3.5e-5, 0, 2.5e-5))
+end;
+
+function κᵢ(x)
+    return SymmetricTensor{2,2,Float64}((4.5e-5, 0, 2.0e-6))
+end;
+
+function Cₘ(x)
+    return 1.0
+end;
+
+function χ(x)
+    return 1.0
+end;
+
+ch = ConstraintHandler(dh)
+∂Ω = getnodeset(grid, &quot;ground&quot;)
+dbc = Dirichlet(:ϕₑ, ∂Ω, (x, t) -&gt; 0)
+add!(ch, dbc)
+close!(ch)
+update!(ch, 0.0);
+
+function doassemble_linear!(cellvalues::CellScalarValues{dim}, K::SparseMatrixCSC, M::SparseMatrixCSC, dh::DofHandler; params::FHNParameters = FHNParameters()) where {dim}
+    n_ϕₘ = getnbasefunctions(cellvalues)
+    n_ϕₑ = getnbasefunctions(cellvalues)
+    n_s = getnbasefunctions(cellvalues)
+    ntotal = n_ϕₘ + n_ϕₑ + n_s
+    n_basefuncs = getnbasefunctions(cellvalues)
+    #We use PseudoBlockArrays to write into the right places of Ke
+    Ke = PseudoBlockArray(zeros(ntotal, ntotal), [n_ϕₘ, n_ϕₑ, n_s], [n_ϕₘ, n_ϕₑ, n_s])
+    Me = PseudoBlockArray(zeros(ntotal, ntotal), [n_ϕₘ, n_ϕₑ, n_s], [n_ϕₘ, n_ϕₑ, n_s])
+
+    assembler_K = start_assemble(K)
+    assembler_M = start_assemble(M)
+
+    #Here the block indices of the variables are defined.
+    ϕₘ▄, ϕₑ▄, s▄ = 1, 2, 3
+
+    #Now we iterate over all cells of the grid
+    @inbounds for cell in CellIterator(dh)
+        fill!(Ke, 0)
+        fill!(Me, 0)
+        #get the coordinates of the current cell
+        coords = getcoordinates(cell)
+
+        JuAFEM.reinit!(cellvalues, cell)
+        #loop over all Gauss points
+        for q_point in 1:getnquadpoints(cellvalues)
+            #get the spatial coordinates of the current gauss point
+            coords_qp = spatial_coordinate(cellvalues, q_point, coords)
+            #based on the gauss point coordinates, we get the spatial dependent
+            #material parameters
+            κₑ_loc = κₑ(coords_qp)
+            κᵢ_loc = κᵢ(coords_qp)
+            Cₘ_loc = Cₘ(coords_qp)
+            χ_loc = χ(coords_qp)
+            dΩ = getdetJdV(cellvalues, q_point)
+            for i in 1:n_basefuncs
+                Nᵢ = shape_value(cellvalues, q_point, i)
+                ∇Nᵢ = shape_gradient(cellvalues, q_point, i)
+                for j in 1:n_basefuncs
+                    Nⱼ = shape_value(cellvalues, q_point, j)
+                    ∇Nⱼ = shape_gradient(cellvalues, q_point, j)
+                    #diffusion parts
+                    Ke[BlockIndex((ϕₘ▄,ϕₘ▄),(i,j))] -= ((κᵢ_loc ⋅ ∇Nᵢ) ⋅ ∇Nⱼ) * dΩ
+                    Ke[BlockIndex((ϕₘ▄,ϕₑ▄),(i,j))] -= ((κᵢ_loc ⋅ ∇Nᵢ) ⋅ ∇Nⱼ) * dΩ
+                    Ke[BlockIndex((ϕₑ▄,ϕₘ▄),(i,j))] -= ((κᵢ_loc ⋅ ∇Nᵢ) ⋅ ∇Nⱼ) * dΩ
+                    Ke[BlockIndex((ϕₑ▄,ϕₑ▄),(i,j))] -= (((κₑ_loc + κᵢ_loc) ⋅ ∇Nᵢ) ⋅ ∇Nⱼ) * dΩ
+                    #linear reaction parts
+                    Ke[BlockIndex((ϕₘ▄,ϕₘ▄),(i,j))] -= params.a * Nᵢ * Nⱼ * dΩ
+                    Ke[BlockIndex((ϕₘ▄,s▄),(i,j))]  -= Nᵢ * Nⱼ * dΩ
+                    Ke[BlockIndex((s▄,ϕₘ▄),(i,j))]  += params.e * params.b * Nᵢ * Nⱼ * dΩ
+                    Ke[BlockIndex((s▄,s▄),(i,j))]   -= params.e * params.c * Nᵢ * Nⱼ * dΩ
+                    #mass matrices
+                    Me[BlockIndex((ϕₘ▄,ϕₘ▄),(i,j))] += Cₘ_loc * χ_loc * Nᵢ * Nⱼ * dΩ
+                    Me[BlockIndex((s▄,s▄),(i,j))]   += Nᵢ * Nⱼ * dΩ
+                end
+            end
+        end
+
+        assemble!(assembler_K, celldofs(cell), Ke)
+        assemble!(assembler_M, celldofs(cell), Me)
+    end
+    return K, M
+end;
+
+function apply_nonlinear!(du, u, p, t)
+    dh = p[2]
+    ch = p[3]
+    params = p[4]
+    ip = p[5]
+    qr = p[6]
+    cellvalues = p[7]
+    n_basefuncs = getnquadpoints(cellvalues)
+
+    for cell in CellIterator(dh)
+        JuAFEM.reinit!(cellvalues, cell)
+        _celldofs = celldofs(cell)
+        ϕₘ_celldofs = _celldofs[dof_range(dh, :ϕₘ)]
+        s_celldofs = _celldofs[dof_range(dh, :s)]
+        ϕₘe = u[ϕₘ_celldofs]
+        se = u[s_celldofs]
+        coords = getcoordinates(cell)
+        for q_point in 1:getnquadpoints(cellvalues)
+            x_qp = spatial_coordinate(cellvalues, q_point, coords)
+            χ_loc = χ(x_qp)
+            dΩ = getdetJdV(cellvalues, q_point)
+            val = function_value(cellvalues, q_point, ϕₘe)
+            nl_contrib = - val^3 + (1+params.a)*val^2
+            for j in 1:n_basefuncs
+                Nⱼ = shape_value(cellvalues, q_point, j)
+                du[ϕₘ_celldofs[j]] += χ_loc * nl_contrib * Nⱼ * dΩ
+                du[s_celldofs[j]]  -= params.e * params.d * Nⱼ * dΩ
+            end
+        end
+    end
+    apply_zero!(du, ch)
+end;
+
+K, M = doassemble_linear!(cellvalues, K, M, dh);
+
+apply!(K, ch)
+apply!(M, ch);
+
+function bidomain!(du,u,p,t)
+    du .= K * u
+    apply_nonlinear!(du, u, p, t)
+end;
+
+u₀ = zeros(ndofs(dh));
+for cell in CellIterator(dh)
+    _celldofs = celldofs(cell)
+    ϕₘ_celldofs = _celldofs[dof_range(dh, :ϕₘ)]
+    s_celldofs = _celldofs[dof_range(dh, :s)]
+    for (i, coordinate) in enumerate(getcoordinates(cell))
+        if coordinate[2] &gt;= 1.25
+            u₀[s_celldofs[i]] = 0.1
+        end
+        if coordinate[1] &lt;= 1.25 &amp;&amp; coordinate[2] &lt;= 1.25
+            u₀[ϕₘ_celldofs[i]] = 1.0
+        end
+    end
+end
+
+jac_sparsity = sparse(K)
+
+f = DifferentialEquations.ODEFunction(bidomain!,mass_matrix=M;jac_prototype=jac_sparsity)
+p = [K, dh, ch, FHNParameters(), ip, qr, cellvalues]
+prob_mm = DifferentialEquations.ODEProblem(f,u₀,(0.0,T),p)
+
+sol = DifferentialEquations.solve(prob_mm,DifferentialEquations.QNDF(),reltol=1e-3,abstol=1e-4, progress=true, progress_steps = 1, adaptive=true, dt=Δt);
+
+pvd = paraview_collection(&quot;bidomain.pvd&quot;);
+
+for (solution,t) in zip(sol.u, sol.t)
+    #compress=false flag because otherwise each vtk file will be stored in memory
+    vtk_grid(&quot;bidomain-$t.vtu&quot;, dh; compress=false) do vtk
+        vtk_point_data(vtk,dh,solution)
+        vtk_save(vtk)
+        pvd[t] = vtk
+    end
+end
+
+vtk_save(pvd);
+
+# This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../transient_heat_equation/">« Time Dependent Problems</a><a class="docs-footer-nextpage" href="../../reference/quadrature/">Quadrature »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 23 February 2021 20:39">Tuesday 23 February 2021</span>. Using Julia version 1.5.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
